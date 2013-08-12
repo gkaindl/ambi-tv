@@ -40,7 +40,7 @@ Now connect the mini-USB power plug to the Raspberry Pi, then connect the extra 
     Raspberry Pi          Header
     ---------------------------------
     P1/19 (MOSI)          LPD8806 DAT pin
-    P1/21 (SCLK)          LPD8806 CLK pin
+    P1/23 (SCLK)          LPD8806 CLK pin
     P1/5                  Push switch side A
     P1/6                  Push switch side B
 
