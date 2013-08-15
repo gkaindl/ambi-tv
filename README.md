@@ -44,6 +44,10 @@ Now connect the mini-USB power plug to the Raspberry Pi, then connect the extra 
     P1/5                  Push switch side A
     P1/6                  Push switch side B
 
+Here is an illustration:
+
+![Raspberry Pi Wiring](doc/rpi-wiring.jpg)
+
 Next, disconnect your main HDMI cable from your TV (the main cable should be the one coming from your A/V receiver. If you have multiple HDMI devices connected to your screen, I'd recommend buying an HDMI switch, so that you won't need to switch around any cables to use ambi-tv with all your devices).
 
 Plug the main HDMI cable into the input of your HDMI splitter. Connect the screen to one output of the HDMI splitter, then connect the HDMI-to-Composite adapter to the other end. Connect the USB video grabber to the HDMI-to-Composite adapter and plug the grabber into the Raspberry Pi.
