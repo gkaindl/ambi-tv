@@ -31,6 +31,8 @@
 #include "components/timer-source.h"
 #include "components/avg-color-processor.h"
 #include "components/edge-color-processor.h"
+#include "components/ttb-color-processor.h"
+#include "components/sbs-color-processor.h"
 #include "components/mood-light-processor.h"
 #include "components/lpd8806-spidev-sink.h"
 
@@ -53,6 +55,14 @@ static struct ambitv_component_registration registrations[] = {
    {
       .name             = "avg-color-processor",
       .constructor      = (void* (*)(const char*, int, char**))ambitv_avg_color_processor_create
+   },
+   {
+      .name             = "ttb-color-processor",
+      .constructor      = (void* (*)(const char*, int, char**))ambitv_ttb_color_processor_create
+   },
+  {
+      .name             = "sbs-color-processor",
+      .constructor      = (void* (*)(const char*, int, char**))ambitv_sbs_color_processor_create
    },
    {
       .name             = "edge-color-processor",
