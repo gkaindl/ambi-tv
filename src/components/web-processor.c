@@ -32,9 +32,11 @@
 
 #define LOGNAME               "web: "
 
+#define MAX_COUNT            150
+
 FILE *fr;            /* declare the file pointer */
 
-long count = 0;
+long count = MAX_COUNT;
 long my_r = 0;
 long my_g = 0;
 long my_b = 0;
@@ -55,7 +57,7 @@ ambitv_web_processor_handle_frame(
    enum ambitv_video_format fmt
 ) {
 	count += 1;
-	if (count > 150){
+	if (count > MAX_COUNT){
 	  fr = fopen("/home/pi/rgb", "rt");
 	  char line[80];
 	  count = 0;
