@@ -29,7 +29,6 @@
 #include "../util.h"
 #include "../log.h"
 
-#define DEFAULT_STEP          0.002
 
 #define LOGNAME               "web: "
 
@@ -55,10 +54,19 @@ ambitv_web_processor_handle_frame(
    int bytesperline,
    enum ambitv_video_format fmt
 ) {
-   struct ambitv_web_processor* mood =
-      (struct ambitv_web_processor*)component->priv;
-      
-   mood->offset = fmod(mood->offset + mood->step, 1.0);
+	count += 1;
+	if (count > 150){
+	  fr = fopen("/home/pi/rgb", "rt");
+	  char line[80];
+	  count = 0;
+	  fgets(line, 80, fr);
+	  sscanf (line, "%ld", &my_r);	
+	  fgets(line, 80, fr);
+	  sscanf (line, "%ld", &my_g);	
+	  fgets(line, 80, fr);
+	  sscanf (line, "%ld", &my_b);	
+	  fclose(fr);
+	}
 
    return 0;
 }
@@ -70,26 +78,10 @@ ambitv_web_processor_update_sink(
 {
    int i, n_out, ret = 0;
 
-   struct ambitv_web_processor* mood =
-      (struct ambitv_web_processor*)processor->priv;
-
    if (sink->f_num_outputs && sink->f_map_output_to_point && sink->f_set_output_to_rgb) {
       n_out = sink->f_num_outputs(sink);
 
       for (i=0; i<n_out; i++) {
-         count += 1;
-         if (count > 150){
-            fr = fopen("/home/pi/rgb", "rt");
-            char line[80];
-            count = 0;
-            fgets(line, 80, fr);
-            sscanf (line, "%ld", &my_r);	
-            fgets(line, 80, fr);
-            sscanf (line, "%ld", &my_g);	
-            fgets(line, 80, fr);
-            sscanf (line, "%ld", &my_b);	
-            fclose(fr);
-         }
          sink->f_set_output_to_rgb(sink, i,my_r, my_g,my_b);
       }
    } else
@@ -105,11 +97,6 @@ static int
 ambitv_web_processor_configure(struct ambitv_processor_component* mood, int argc, char** argv)
 {
    int c, ret = 0;
-
-   struct ambitv_web_processor* mood_priv =
-      (struct ambitv_web_processor*)mood->priv;
-   if (NULL == mood_priv)
-      return -1;
 
    static struct option lopts[] = {
       { NULL, 0, 0, 0 }
@@ -128,7 +115,7 @@ ambitv_web_processor_configure(struct ambitv_processor_component* mood, int argc
                double nbuf = strtod(optarg, &eptr);
 
                if ('\0' == *eptr && nbuf > 0) {
-                  mood_priv->step = nbuf / 1000.0;
+
                } else {
                   ambitv_log(ambitv_log_error, LOGNAME "invalid argument for '%s': '%s'.\n",
                      argv[optind-2], optarg);
@@ -156,11 +143,8 @@ ambitv_web_processor_configure(struct ambitv_processor_component* mood, int argc
 static void
 ambitv_web_processor_print_configuration(struct ambitv_processor_component* component)
 {
-   struct ambitv_web_processor* mood =
-      (struct ambitv_web_processor*)component->priv;
-
    ambitv_log(ambitv_log_info,
-      "\tdefault:  \n"
+      "\tnothing to configure  \n"
    );
 }
 
@@ -181,8 +165,6 @@ ambitv_web_processor_create(const char* name, int argc, char** argv)
          (struct ambitv_web_processor*)malloc(sizeof(struct ambitv_web_processor));
 
       web_processor->priv = (void*)priv;
-      
-      priv->step = DEFAULT_STEP;
 
       web_processor->f_print_configuration  = ambitv_web_processor_print_configuration;
       web_processor->f_consume_frame        = ambitv_web_processor_handle_frame;

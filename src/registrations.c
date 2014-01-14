@@ -65,7 +65,7 @@ static struct ambitv_component_registration registrations[] = {
    },
    {
       .name             = "web-processor",
-      .constructor      = (void* (*)(const char*, int, char**))ambitv_mood_light_processor_create
+      .constructor      = (void* (*)(const char*, int, char**))ambitv_web_processor_create
    },
    {
       .name             = "lpd8806-spidev-sink",
