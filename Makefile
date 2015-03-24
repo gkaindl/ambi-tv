@@ -17,10 +17,16 @@
 # along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ifdef LOCALBUILD
-	CFLAGS = -O3 -Wall
+CFLAGS = -Wall
+
+ifndef LOCALBUILD
+	CFLAGS += -march=armv6 -mfpu=vfp -mfloat-abi=hard
+endif
+
+ifdef DEBUG
+	CFLAGS += -ggdb
 else
-	CFLAGS = -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Wall
+	CFLAGS += -O3
 endif
 
 LDFLAGS = -lpthread -lm
@@ -52,15 +58,15 @@ bin/ambi-tv: $(OBJ_AMBITV_LIB) $(OBJ_AMBITV_MAIN)
 	$(CC) $(LDFLAGS) $^ -o $@      
 
 
-TEST_LDFLAGS = -lcunit
-
-SRC_TESTS = src/test/testrunner.c
+SRC_TESTS = $(wildcard src/test/*.c)
 
 OBJ_TESTS = $(SRC_TESTS:.c=.o)
 
+bin/testrunner: LDFLAGS += -lcunit
+bin/testrunner: CFLAGS += -Isrc
 bin/testrunner: $(OBJ_AMBITV_LIB) $(OBJ_TESTS)
 	$(dir)
-	$(CC) $(LDFLAGS) $(TEST_LDFLAGS) $^ -o $@
+	$(CC) $(LDFLAGS) $^ -o $@
 
 test: bin/testrunner
 	./bin/testrunner
@@ -71,5 +77,6 @@ test: bin/testrunner
 
 clean:
 	rm -f $(OBJ_AMBITV_LIB)
+	rm -f $(OBJ_TESTS)
 	rm -rf bin
 
