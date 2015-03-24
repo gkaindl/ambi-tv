@@ -1,77 +1,27 @@
+
 #include "CUnit/Basic.h"
 #include "CUnit/Console.h"
 #include "CUnit/Automated.h"
 
-#define TRUE 1
-#define FALSE 0
-
-int init_suite_success(void) { return 0; }
-int clean_suite_success(void) { return 0; }
-
-void test_success1(void)
-{
-   CU_ASSERT(TRUE);
-}
-
-void test_success2(void)
-{
-   CU_ASSERT_NOT_EQUAL(2, -1);
-}
-
-void test_success3(void)
-{
-   CU_ASSERT_STRING_EQUAL("string #1", "string #1");
-}
-
-void test_success4(void)
-{
-   CU_ASSERT_STRING_NOT_EQUAL("string #1", "string #2");
-}
-
-void test_failure1(void)
-{
-   CU_ASSERT(FALSE);
-}
-
-void test_failure2(void)
-{
-   CU_ASSERT_EQUAL(2, 3);
-}
-
-void test_failure3(void)
-{
-   CU_ASSERT_STRING_NOT_EQUAL("string #1", "string #1");
-}
-
-void test_failure4(void)
-{
-   CU_ASSERT_STRING_EQUAL("string #1", "string #2");
-}
-
+#include "util-test.h"
+#include "lpd8806-spidev-sink-test.h"
 
 int main()
 {
-   CU_pSuite pSuite = NULL;
-
    /* initialize the CUnit test registry */
    if (CUE_SUCCESS != CU_initialize_registry())
       return CU_get_error();
 
-   /* add a suite to the registry */
-   pSuite = CU_add_suite("Suite_mixed", NULL, NULL);
-   if (NULL == pSuite) {
-      CU_cleanup_registry();
-      return CU_get_error();
+   int retval;
+
+   retval = lpd8806_spidev_sink_test_add_suite();
+   if (retval != CUE_SUCCESS) {
+    return retval;
    }
 
-   /* add the tests to the suite */
-   if ((NULL == CU_add_test(pSuite, "successful_test_2", test_success2)) ||
-       (NULL == CU_add_test(pSuite, "failed_test_4",     test_failure4)) ||
-       (NULL == CU_add_test(pSuite, "failed_test_2",     test_failure2)) ||
-       (NULL == CU_add_test(pSuite, "successful_test_4", test_success4)))
-   {
-      CU_cleanup_registry();
-      return CU_get_error();
+   retval = util_test_add_suite();
+   if (retval != CUE_SUCCESS) {
+    return retval;
    }
 
    /* Run all tests using the basic interface */
