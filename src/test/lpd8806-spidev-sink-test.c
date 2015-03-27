@@ -234,10 +234,11 @@ void test_lpd8806_map_output_to_point_second_last_on_the_top(void) {
    tear_down();
 }
 
-void test_lpd8806_map_output_to_point_upper_led_on_the_left_side(void) {
+void test_lpd8806_map_output_to_point_left_top(void) {
    set_up();
 
-   int output = 39;
+   // First LED on the third side means output: 20 ( 10 * (SIDE - 1) + (LED_IDX - 1) )
+   int output = 20;
    int x = -1;
    int y = -1;
    int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
@@ -248,21 +249,7 @@ void test_lpd8806_map_output_to_point_upper_led_on_the_left_side(void) {
    tear_down();
 }
 
-void test_lpd8806_map_output_to_point_lower_led_on_the_left_side(void) {
-   set_up();
-
-   int output = 30;
-   int x = -1;
-   int y = -1;
-   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
-   CU_ASSERT_EQUAL(x, 0);
-   CU_ASSERT_EQUAL(y, 0);
-   CU_ASSERT_EQUAL(retval, 0);
-
-   tear_down();
-}
-
-void test_lpd8806_map_output_to_point_left_led_on_the_bottom(void) {
+void test_lpd8806_map_output_to_point_left_bottom(void) {
    set_up();
 
    int output = 29;
@@ -276,43 +263,15 @@ void test_lpd8806_map_output_to_point_left_led_on_the_bottom(void) {
    tear_down();
 }
 
-void test_lpd8806_map_output_to_point_right_led_on_the_bottom(void) {
+void test_lpd8806_map_output_to_point_right_bottom(void) {
    set_up();
 
-   int output = 20;
+   int output = 39;
    int x = -1;
    int y = -1;
    int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
    CU_ASSERT_EQUAL(x, 100);
    CU_ASSERT_EQUAL(y, 100);
-   CU_ASSERT_EQUAL(retval, 0);
-
-   tear_down();
-}
-
-void test_lpd8806_map_output_to_point_bottom_led_on_the_right(void) {
-   set_up();
-
-   int output = 19;
-   int x = -1;
-   int y = -1;
-   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
-   CU_ASSERT_EQUAL(x, 100);
-   CU_ASSERT_EQUAL(y, 100);
-   CU_ASSERT_EQUAL(retval, 0);
-
-   tear_down();
-}
-
-void test_lpd8806_map_output_to_point_top_led_on_the_right(void) {
-   set_up();
-
-   int output = 10;
-   int x = -1;
-   int y = -1;
-   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
-   CU_ASSERT_EQUAL(x, 100);
-   CU_ASSERT_EQUAL(y, 0);
    CU_ASSERT_EQUAL(retval, 0);
 
    tear_down();
@@ -340,13 +299,10 @@ int lpd8806_spidev_sink_test_add_suite() {
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_two", test_lpd8806_map_output_to_point_two)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_last_on_the_top", test_lpd8806_map_output_to_point_last_on_the_top)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_second_last_on_the_top", test_lpd8806_map_output_to_point_second_last_on_the_top)) ||
-       0
-//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_upper_led_on_the_left_side", test_lpd8806_map_output_to_point_upper_led_on_the_left_side)) ||
-//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_lower_led_on_the_left_side", test_lpd8806_map_output_to_point_lower_led_on_the_left_side)) ||
-//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_left_led_on_the_bottom", test_lpd8806_map_output_to_point_left_led_on_the_bottom)) ||
-//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_right_led_on_the_bottom", test_lpd8806_map_output_to_point_right_led_on_the_bottom)) ||
-//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_bottom_led_on_the_right", test_lpd8806_map_output_to_point_bottom_led_on_the_right)) ||
-//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_top_led_on_the_right", test_lpd8806_map_output_to_point_top_led_on_the_right))
+
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_left_top", test_lpd8806_map_output_to_point_left_top)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_left_bottom", test_lpd8806_map_output_to_point_left_bottom)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_right_bottom", test_lpd8806_map_output_to_point_right_bottom))
       ) {
       CU_cleanup_registry();
       return CU_get_error();
