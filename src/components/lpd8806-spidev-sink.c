@@ -45,7 +45,7 @@ static const char ambitv_lpd8806_spidev_mode  = 0;
 static const char ambitv_lpd8806_spidev_bits  = 8;
 static const char ambitv_lpd8806_spidev_lsbf  = 0;
 
-static int*
+int*
 ambitv_lpd8806_ptr_for_output(struct ambitv_lpd8806_priv* lpd8806, int output, int* led_str_idx, int* led_idx)
 {
    int idx = 0, *ptr = NULL;

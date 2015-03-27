@@ -16,6 +16,9 @@ struct ambitv_lpd8806_priv {
    unsigned char*    gamma_lut[3];  // also RGB
 };
 
+int*
+ambitv_lpd8806_ptr_for_output(struct ambitv_lpd8806_priv* lpd8806, int output, int* led_str_idx, int* led_idx);
+
 int
 ambitv_lpd8806_map_output_to_point(
    struct ambitv_sink_component* component,

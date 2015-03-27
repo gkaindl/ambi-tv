@@ -24,11 +24,16 @@ static int DISPLAY_HEIGHT = 100;
 
 static const int _NUM_LEDS = 40;
 static const int _LED_LEN[] = { 10, 10, 10, 10 };
-static const int _LED_STR_TOP[]    = { 1 };
-static const int _LED_STR_BOTTOM[] = { 2 };
-static const int _LED_STR_LEFT[]   = { 3 };
-static const int _LED_STR_RIGHT[]  = { 4 };
-static const int *_LED_STR[] = { _LED_STR_TOP, _LED_STR_BOTTOM, _LED_STR_LEFT, _LED_STR_RIGHT };
+static const int _LED_STR_TOP[]    = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+static const int _LED_STR_BOTTOM[] = { 29, 28, 27, 26, 25, 24, 23, 22, 21, 20 };
+static const int _LED_STR_LEFT[]   = { 39, 38, 37, 36, 35, 34, 33, 32, 31, 30 };
+static const int _LED_STR_RIGHT[]  = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
+static const int *_LED_STR[] = { 
+   _LED_STR_TOP,
+   _LED_STR_BOTTOM,
+   _LED_STR_LEFT,
+   _LED_STR_RIGHT
+};
 static const int _LED_INSET[] = { 0., 0., 0., 0.};
 
 void set_up_sink() {
@@ -48,12 +53,111 @@ void tear_down_sink() {
    SINK = NULL;
 }
 
-void set_up() {
+void set_up()
+{
    set_up_sink();
 }
 
-void tear_down() {
+void tear_down()
+{
    tear_down_sink();
+}
+
+inline int *get_led_str(struct ambitv_sink_component* sink, int side, int idx)
+{
+   return &(((struct ambitv_lpd8806_priv*)sink->priv)->led_str[side][idx]);
+}
+
+void test_lpd8806_ptr_for_output_top_right(void)
+{
+   set_up();
+
+   int output = 9;
+   int str_idx = -1;
+   int led_idx = -1;
+
+   int *ptr = ambitv_lpd8806_ptr_for_output(SINK->priv, output, &str_idx, &led_idx);
+   CU_ASSERT_EQUAL(str_idx, 0);
+   CU_ASSERT_EQUAL(led_idx, 9);
+   CU_ASSERT_PTR_NOT_NULL_FATAL(ptr);
+   CU_ASSERT_EQUAL(ptr, get_led_str(SINK, 0, 9));
+
+   tear_down();
+}
+
+void test_lpd8806_ptr_for_output_top_left(void)
+{
+   set_up();
+
+   int output = 0;
+   int str_idx = -1;
+   int led_idx = -1;
+
+   int *ptr = ambitv_lpd8806_ptr_for_output(SINK->priv, output, &str_idx, &led_idx);
+   CU_ASSERT_EQUAL(str_idx, 0);
+   CU_ASSERT_EQUAL(led_idx, 0);
+   CU_ASSERT_PTR_NOT_NULL_FATAL(ptr);
+   CU_ASSERT_EQUAL(ptr, get_led_str(SINK, 0, 0));
+
+   tear_down();
+}
+
+void test_lpd8806_ptr_for_output_left_top(void)
+{
+   set_up();
+
+   // LEDs are indexed continuously through the side arrays top-bottom-left-right
+   // not according to the stripe layout or clockwise sequence
+   // The first LED on the left side comes after ten LEDs from the top, then ten LEDs
+   // from the bottom and is therefore number 20.
+   int output = 20;
+   int str_idx = -1;
+   int led_idx = -1;
+
+   int *ptr = ambitv_lpd8806_ptr_for_output(SINK->priv, output, &str_idx, &led_idx);
+   CU_ASSERT_EQUAL(str_idx, 2);
+   CU_ASSERT_EQUAL(led_idx, 0);
+   CU_ASSERT_PTR_NOT_NULL_FATAL(ptr);
+   CU_ASSERT_EQUAL(ptr, get_led_str(SINK, 2, 0));
+
+   tear_down();
+}
+
+void test_lpd8806_ptr_for_output_bottom_left(void)
+{
+   set_up();
+
+   // LEDs are indexed continuously through the side arrays top-bottom-left-right
+   // not according to the stripe layout or clockwise sequence so ten means it is on
+   // the second side which is the bottom one
+   int output = 10;
+   int str_idx = -1;
+   int led_idx = -1;
+
+   int *ptr = ambitv_lpd8806_ptr_for_output(SINK->priv, output, &str_idx, &led_idx);
+   CU_ASSERT_EQUAL(str_idx, 1);
+   CU_ASSERT_EQUAL(led_idx, 0);
+   CU_ASSERT_PTR_NOT_NULL_FATAL(ptr);
+   CU_ASSERT_EQUAL(ptr, get_led_str(SINK, 1, 0));
+
+   tear_down();
+}
+
+void test_lpd8806_ptr_for_output_right_top(void)
+{
+   set_up();
+
+   int output = 30;
+   int str_idx = -1;
+   int led_idx = -1;
+
+   int *ptr = ambitv_lpd8806_ptr_for_output(SINK->priv, output, &str_idx, &led_idx);
+   CU_ASSERT_EQUAL(str_idx, 3);
+   CU_ASSERT_EQUAL(led_idx, 0);
+   CU_ASSERT_PTR_NOT_NULL_FATAL(ptr);
+   CU_ASSERT_EQUAL(ptr, get_led_str(SINK, 3, 0));
+
+   tear_down();
 }
 
 void test_lpd8806_map_output_to_point_zero(void)
@@ -101,7 +205,7 @@ void test_lpd8806_map_output_to_point_two(void)
    tear_down();
 }
 
-void test_lpd8806_map_output_to_point_last_in_first_line(void)
+void test_lpd8806_map_output_to_point_last_on_the_top(void)
 {
    set_up();
 
@@ -116,7 +220,7 @@ void test_lpd8806_map_output_to_point_last_in_first_line(void)
    tear_down();
 }
 
-void test_lpd8806_map_output_to_point_second_last_in_first_line(void) {
+void test_lpd8806_map_output_to_point_second_last_on_the_top(void) {
    set_up();
 
    int output = 8;
@@ -130,16 +234,86 @@ void test_lpd8806_map_output_to_point_second_last_in_first_line(void) {
    tear_down();
 }
 
-void test_lpd8806_map_output_to_point_second_one_in_second_line(void) {
+void test_lpd8806_map_output_to_point_upper_led_on_the_left_side(void) {
    set_up();
 
-   int output = 11;
+   int output = 39;
    int x = -1;
    int y = -1;
    int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
-//   CU_ASSERT_EQUAL(x, 11);
-//   CU_ASSERT_EQUAL(y, 11);
-//   CU_ASSERT_EQUAL(retval, 0);
+   CU_ASSERT_EQUAL(x, 0);
+   CU_ASSERT_EQUAL(y, 0);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
+void test_lpd8806_map_output_to_point_lower_led_on_the_left_side(void) {
+   set_up();
+
+   int output = 30;
+   int x = -1;
+   int y = -1;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
+   CU_ASSERT_EQUAL(x, 0);
+   CU_ASSERT_EQUAL(y, 0);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
+void test_lpd8806_map_output_to_point_left_led_on_the_bottom(void) {
+   set_up();
+
+   int output = 29;
+   int x = -1;
+   int y = -1;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
+   CU_ASSERT_EQUAL(x, 0);
+   CU_ASSERT_EQUAL(y, 100);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
+void test_lpd8806_map_output_to_point_right_led_on_the_bottom(void) {
+   set_up();
+
+   int output = 20;
+   int x = -1;
+   int y = -1;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
+   CU_ASSERT_EQUAL(x, 100);
+   CU_ASSERT_EQUAL(y, 100);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
+void test_lpd8806_map_output_to_point_bottom_led_on_the_right(void) {
+   set_up();
+
+   int output = 19;
+   int x = -1;
+   int y = -1;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
+   CU_ASSERT_EQUAL(x, 100);
+   CU_ASSERT_EQUAL(y, 100);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
+void test_lpd8806_map_output_to_point_top_led_on_the_right(void) {
+   set_up();
+
+   int output = 10;
+   int x = -1;
+   int y = -1;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
+   CU_ASSERT_EQUAL(x, 100);
+   CU_ASSERT_EQUAL(y, 0);
+   CU_ASSERT_EQUAL(retval, 0);
 
    tear_down();
 }
@@ -155,12 +329,24 @@ int lpd8806_spidev_sink_test_add_suite() {
    }
 
    /* add the tests to the suite */
-   if ((NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_zero", test_lpd8806_map_output_to_point_zero)) ||
+   if ((NULL == CU_add_test(pSuite, "test_lpd8806_ptr_for_output_top_left", test_lpd8806_ptr_for_output_top_left)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_ptr_for_output_bottom_left", test_lpd8806_ptr_for_output_bottom_left)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_ptr_for_output_top_right", test_lpd8806_ptr_for_output_top_right)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_ptr_for_output_right_top", test_lpd8806_ptr_for_output_right_top)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_ptr_for_output_left_top", test_lpd8806_ptr_for_output_left_top)) ||
+
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_zero", test_lpd8806_map_output_to_point_zero)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_one", test_lpd8806_map_output_to_point_one)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_two", test_lpd8806_map_output_to_point_two)) ||
-       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_last_in_first_line", test_lpd8806_map_output_to_point_last_in_first_line)) ||
-       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_second_last_in_first_line", test_lpd8806_map_output_to_point_second_last_in_first_line)) ||
-       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_second_one_in_second_line", test_lpd8806_map_output_to_point_second_one_in_second_line))
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_last_on_the_top", test_lpd8806_map_output_to_point_last_on_the_top)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_second_last_on_the_top", test_lpd8806_map_output_to_point_second_last_on_the_top)) ||
+       0
+//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_upper_led_on_the_left_side", test_lpd8806_map_output_to_point_upper_led_on_the_left_side)) ||
+//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_lower_led_on_the_left_side", test_lpd8806_map_output_to_point_lower_led_on_the_left_side)) ||
+//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_left_led_on_the_bottom", test_lpd8806_map_output_to_point_left_led_on_the_bottom)) ||
+//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_right_led_on_the_bottom", test_lpd8806_map_output_to_point_right_led_on_the_bottom)) ||
+//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_bottom_led_on_the_right", test_lpd8806_map_output_to_point_bottom_led_on_the_right)) ||
+//       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_top_led_on_the_right", test_lpd8806_map_output_to_point_top_led_on_the_right))
       ) {
       CU_cleanup_registry();
       return CU_get_error();
