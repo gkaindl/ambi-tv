@@ -116,7 +116,7 @@ Currently, ambi-tv includes the following components with their respective setti
 
 **edge-color-processor**: Calculates the colors around the edges of the video frame – This is the typical "ambilight" effect.
 
-- `box-width`, `box-height`: The size (in pixels) of the box which the processor will use for each LED in the output: The LED will be set to the average color of that box. Smaller box sizes will yield a less fuzzy effect, but larger box sizes are less noisy and might (counter-intuitively) capture more "detail": Experiment with this to find a setting you like.
+- `box-width`, `box-height`: Currently not used! The size (in pixels) of the box which the processor will use for each LED in the output: The LED will be set to the average color of that box. Smaller box sizes will yield a less fuzzy effect, but larger box sizes are less noisy and might (counter-intuitively) capture more "detail": Experiment with this to find a setting you like.
 
 **mood-light-processor**: Doesn't require a video frame input and creates a nice "mood light" effect by mapping the HSL colorspace.
 

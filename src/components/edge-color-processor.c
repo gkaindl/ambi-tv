@@ -23,6 +23,7 @@
 #include <getopt.h>
 
 #include "edge-color-processor.h"
+#include "edge-color-processor.r"
 
 #include "../video-fmt.h"
 #include "../util.h"
@@ -60,6 +61,12 @@ ambitv_edge_color_processor_handle_frame(
    return 0;
 }
 
+void point_to_box(int *x, int *y, int w, int h, int width, int height)
+{
+   *x = CONSTRAIN(*x-w, 0, width);
+   *y = CONSTRAIN(*y-h, 0, height);
+}
+
 static int
 ambitv_edge_color_processor_update_sink(
    struct ambitv_processor_component* processor,
@@ -85,15 +92,11 @@ ambitv_edge_color_processor_update_sink(
 
       for (i=0; i<n_out; i++) {
          unsigned char rgb[3];
-         int x, y, x2, y2;
+         int x, y;
          
          if (0 == sink->f_map_output_to_point(sink, i, edge->width, edge->height, &x, &y)) {
-            x  = CONSTRAIN(x-4, 0, edge->width);
-            y  = CONSTRAIN(y-4, 0, edge->height);
-            x2 = CONSTRAIN(x+4, 0, edge->width);
-            y2 = CONSTRAIN(y+4, 0, edge->height);
-            
-            ambitv_video_fmt_avg_rgb_for_block(rgb, edge->frame, x, y, x2-x, y2-y, edge->bytesperline, edge->fmt, 4);
+            point_to_box(&x, &y, DEFAULT_BOX_WIDTH, DEFAULT_BOX_HEIGHT, edge->width, edge->height);
+            ambitv_video_fmt_avg_rgb_for_block(rgb, edge->frame, x, y, DEFAULT_BOX_WIDTH, DEFAULT_BOX_HEIGHT, edge->bytesperline, edge->fmt, 4);
             
             sink->f_set_output_to_rgb(sink, i, rgb[0], rgb[1], rgb[2]);
          }

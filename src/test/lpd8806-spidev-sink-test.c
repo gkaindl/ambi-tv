@@ -34,7 +34,7 @@ static const int *_LED_STR[] = {
    _LED_STR_LEFT,
    _LED_STR_RIGHT
 };
-static const int _LED_INSET[] = { 0., 0., 0., 0.};
+static const double _LED_INSET[] = { 0., 0., 0., 0.};
 
 void set_up_sink() {
    SINK = (struct ambitv_sink_component*) malloc(sizeof(struct ambitv_sink_component));
@@ -66,6 +66,11 @@ void tear_down()
 inline int *get_led_str(struct ambitv_sink_component* sink, int side, int idx)
 {
    return &(((struct ambitv_lpd8806_priv*)sink->priv)->led_str[side][idx]);
+}
+
+inline double *get_inset(struct ambitv_sink_component* sink)
+{
+   return ((struct ambitv_lpd8806_priv*)sink->priv)->led_inset;
 }
 
 void test_lpd8806_ptr_for_output_top_right(void)
@@ -277,6 +282,57 @@ void test_lpd8806_map_output_to_point_right_bottom(void) {
    tear_down();
 }
 
+void test_lpd8806_map_output_to_point_zero_with_inset(void)
+{
+   set_up();
+
+   int output = 0; 
+   int x = -1;
+   int y = -1;
+   double *inset = get_inset(SINK);
+   inset[0] = -0.10;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
+   CU_ASSERT_EQUAL(x, 0);
+   CU_ASSERT_EQUAL(y, 0);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
+void test_lpd8806_map_output_to_point_one_with_inset(void)
+{
+   set_up();
+
+   int output = 1; 
+   int x = -1;
+   int y = -1;
+   double *inset = get_inset(SINK);
+   inset[0] = -0.10;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
+   CU_ASSERT_EQUAL(x, 3);
+   CU_ASSERT_EQUAL(y, 0);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
+void test_lpd8806_map_output_to_point_top_second_last_with_inset(void)
+{
+   set_up();
+
+   int output = 8; 
+   int x = -1;
+   int y = -1;
+   double *inset = get_inset(SINK);
+   inset[0] = -0.10;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
+   CU_ASSERT_EQUAL(x, 96);
+   CU_ASSERT_EQUAL(y, 0);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
 int lpd8806_spidev_sink_test_add_suite() {
    CU_pSuite pSuite = NULL;
 
@@ -302,7 +358,12 @@ int lpd8806_spidev_sink_test_add_suite() {
 
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_left_top", test_lpd8806_map_output_to_point_left_top)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_left_bottom", test_lpd8806_map_output_to_point_left_bottom)) ||
-       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_right_bottom", test_lpd8806_map_output_to_point_right_bottom))
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_right_bottom", test_lpd8806_map_output_to_point_right_bottom)) ||
+
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_zero_with_inset", test_lpd8806_map_output_to_point_zero_with_inset)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_one_with_inset", test_lpd8806_map_output_to_point_one_with_inset)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_top_second_last_with_inset", test_lpd8806_map_output_to_point_top_second_last_with_inset))
+       // TODO test for the coordinates why 11 and 22?
       ) {
       CU_cleanup_registry();
       return CU_get_error();
