@@ -22,6 +22,7 @@
 #include <linux/videodev2.h>
 
 #include "video-fmt.h"
+#include "video-fmt.r"
 #include "log.h"
 
 #define LOGNAME      "video-fmt: "
@@ -53,7 +54,7 @@ v4l2_to_ambitv_video_format(uint32_t fourcc)
    return fmt;
 }
 
-static void yuv_to_rgb(int y, int u, int v, unsigned char* r, unsigned char* g, unsigned char* b)
+void yuv_to_rgb(int y, int u, int v, unsigned char* r, unsigned char* g, unsigned char* b)
 {
    int c, d, e, i;
    int rgb[3];
@@ -76,7 +77,15 @@ static void yuv_to_rgb(int y, int u, int v, unsigned char* r, unsigned char* g, 
    *b = (unsigned char)rgb[2];
 }
 
-static int avg_rgb_for_block_yuyv(unsigned char* rgb, const void* pixbuf, int x, int y, int w, int h, int bytesperline, int coarseness)
+
+#define YUYV_BYTES_PER_PIXEL 2
+#define YUYV_PIXEL_PER_TUPLE 2
+
+/*
+            point_to_box(&x, &y, DEFAULT_BOX_WIDTH, DEFAULT_BOX_HEIGHT, edge->width, edge->height);
+            ambitv_video_fmt_avg_rgb_for_block(rgb, edge->frame, x, y, DEFAULT_BOX_WIDTH, DEFAULT_BOX_HEIGHT, edge->bytesperline, edge->fmt, 4);
+*/
+int avg_rgb_for_block_yuyv(unsigned char* rgb, const void* pixbuf, int x, int y, int w, int h, int bytesperline, int coarseness)
 {
    int i, j, k, v, y1, u, y2, cnt = 0;
 
@@ -88,9 +97,9 @@ static int avg_rgb_for_block_yuyv(unsigned char* rgb, const void* pixbuf, int x,
 
    x = (x >> 2) << 2;
 
-   for (i=x; i<x+w; i+=2*coarseness) {
+   for (i = x; i < x + w; i += YUYV_PIXEL_PER_TUPLE * coarseness) {
       for (j=y; j<y+h; j++) {
-         unsigned char* yuyv = &(((unsigned char*)pixbuf)[2*i + j*bytesperline]);
+         unsigned char* yuyv = &(((unsigned char*)pixbuf)[YUYV_BYTES_PER_PIXEL*i + j*bytesperline]);
 
          y1 = yuyv[0];
          u  = yuyv[1];

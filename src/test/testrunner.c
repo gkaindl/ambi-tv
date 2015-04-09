@@ -6,6 +6,7 @@
 #include "util-test.h"
 #include "lpd8806-spidev-sink-test.h"
 #include "edge-color-processor-test.h"
+#include "video-fmt-test.h"
 
 int main()
 {
@@ -26,6 +27,11 @@ int main()
    }
  
    retval = edge_color_processor_test_add_suite();
+   if (retval != CUE_SUCCESS) {
+    return retval;
+   }
+
+   retval = video_fmt_test_add_suite();
    if (retval != CUE_SUCCESS) {
     return retval;
    }
