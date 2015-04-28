@@ -17,7 +17,18 @@
 # along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+AMBITV = bin/ambi-tv
+
 CFLAGS = -Wall
+LDFLAGS = -lpthread -lm
+CC = gcc
+
+#
+# Set the following variables to customize the build process
+#
+# LOCALBUILD - build the system locally with your default arch
+# DEBUG			 - compile with ggdb debug flags
+#
 
 ifndef LOCALBUILD
 	CFLAGS += -march=armv6 -mfpu=vfp -mfloat-abi=hard
@@ -29,12 +40,11 @@ else
 	CFLAGS += -O3
 endif
 
-LDFLAGS = -lpthread -lm
-CC = gcc
-
-.PHONY = all clean
-
-AMBITV = bin/ambi-tv
+#
+# Build
+#
+#
+all: $(AMBITV)
 
 SRC_AMBITV_LIB = src/video-fmt.c src/parse-conf.c src/component.c   \
 	src/registrations.c src/util.c src/program.c src/log.c src/color.c      \
@@ -45,18 +55,19 @@ SRC_AMBITV_LIB = src/video-fmt.c src/parse-conf.c src/component.c   \
 	src/components/mood-light-processor.c
 
 SRC_AMBITV_MAIN = src/main.c
-
 OBJ_AMBITV_MAIN = $(SRC_AMBITV_MAIN:.c=.o)
+
 OBJ_AMBITV_LIB = $(SRC_AMBITV_LIB:.c=.o)
 
 dir=@mkdir -p bin
-
-all: $(AMBITV)
 
 bin/ambi-tv: $(OBJ_AMBITV_LIB) $(OBJ_AMBITV_MAIN)
 	$(dir)
 	$(CC) $(LDFLAGS) $^ -o $@      
 
+#
+# Automated tests
+#
 
 SRC_TESTS = $(wildcard src/test/*.c)
 
@@ -71,6 +82,9 @@ bin/testrunner: $(OBJ_AMBITV_LIB) $(OBJ_TESTS)
 test: bin/testrunner
 	./bin/testrunner
 
+#
+# Common goals
+#
 
 .c.o:
 	gcc $(CFLAGS) -c $< -o $@    
@@ -79,4 +93,6 @@ clean:
 	rm -f $(OBJ_AMBITV_LIB)
 	rm -f $(OBJ_TESTS)
 	rm -rf bin
+
+.PHONY = all clean
 
