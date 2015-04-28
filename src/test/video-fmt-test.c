@@ -36,12 +36,27 @@ void test_video_fmt_yuv_to_rgb_blue() {
   CU_ASSERT_EQUAL(rgb[2], 255);
 }
 
+void prgb(const char* msg, unsigned char *rgb) {
+  printf("\n%s: RGB[%u,%u,%u]\n", msg, (unsigned int)rgb[0], (unsigned int)rgb[1], (unsigned int)rgb[2]);
+}
+
+void copy_range(void* dst, void* src, unsigned int dst_size, unsigned int src_size) {
+  void* ptr;
+  for (ptr = dst; ptr <= dst + (dst_size - src_size); ptr += src_size) {
+    memcpy(ptr, src, src_size);
+  }
+}
+
 void test_video_fmt_avg_rgb_for_block_yuyv() {
-  // ignored TODO implement
-  return;
   unsigned char rgb[3];
   // 16 by 4 pixels -> 64 pixels * 2 bytes per pixel = 128
   unsigned char pixbuf[128] = { 0 };
+
+  unsigned char yuyu[] = {16, 128, 16, 128};
+  unsigned int offset = 0;
+  unsigned int width = 4;
+  copy_range(pixbuf, yuyu, 128, 4);
+
   int x = 0;
   int y = 0;
   int w = 4;
@@ -49,6 +64,7 @@ void test_video_fmt_avg_rgb_for_block_yuyv() {
   int bytesperline = 16 * 2;
   int coarseness = 1;
   avg_rgb_for_block_yuyv(rgb, pixbuf, x, y, w, h, bytesperline, coarseness);
+  prgb("avg", rgb);
   CU_ASSERT_EQUAL(rgb[0], 0);
   CU_ASSERT_EQUAL(rgb[1], 0);
   CU_ASSERT_EQUAL(rgb[2], 0);
