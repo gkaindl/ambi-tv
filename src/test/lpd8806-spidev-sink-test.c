@@ -195,6 +195,23 @@ void test_lpd8806_map_output_to_point_one(void)
    tear_down();
 }
 
+void test_lpd8806_map_output_to_point_one_pal(void)
+{
+   set_up();
+   int DISPLAY_WIDTH_PAL = 702;
+   int DISPLAY_HEIGHT_PAL = 576;
+
+   int output = 1; 
+   int x = -1;
+   int y = -1;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH_PAL, DISPLAY_HEIGHT_PAL, &x, &y);
+   CU_ASSERT_EQUAL(x, 78);
+   CU_ASSERT_EQUAL(y, 0);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
 void test_lpd8806_map_output_to_point_two(void)
 {
    set_up();
@@ -366,6 +383,7 @@ int lpd8806_spidev_sink_test_add_suite() {
 
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_zero", test_lpd8806_map_output_to_point_zero)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_one", test_lpd8806_map_output_to_point_one)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_one_pal", test_lpd8806_map_output_to_point_one_pal)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_two", test_lpd8806_map_output_to_point_two)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_last_on_the_top", test_lpd8806_map_output_to_point_last_on_the_top)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_second_last_on_the_top", test_lpd8806_map_output_to_point_second_last_on_the_top)) ||
