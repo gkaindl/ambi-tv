@@ -114,7 +114,7 @@ void test_lpd8806_ptr_for_output_left_top(void)
    // LEDs are indexed continuously through the side arrays top-bottom-left-right
    // not according to the stripe layout or clockwise sequence
    // The first LED on the left side comes after ten LEDs from the top, then ten LEDs
-   // from the bottom and is therefore number 20.
+   // from the bottom; therefore it is number 20.
    int output = 20;
    int str_idx = -1;
    int led_idx = -1;
@@ -282,6 +282,20 @@ void test_lpd8806_map_output_to_point_right_bottom(void) {
    tear_down();
 }
 
+void test_lpd8806_map_output_to_point_second_led_on_the_right(void) {
+   set_up();
+
+   int output = 31;
+   int x = -1;
+   int y = -1;
+   int retval = ambitv_lpd8806_map_output_to_point(SINK, output, DISPLAY_WIDTH, DISPLAY_HEIGHT, &x, &y);
+   CU_ASSERT_EQUAL(x, 100);
+   CU_ASSERT_EQUAL(y, 11);
+   CU_ASSERT_EQUAL(retval, 0);
+
+   tear_down();
+}
+
 void test_lpd8806_map_output_to_point_zero_with_inset(void)
 {
    set_up();
@@ -359,6 +373,7 @@ int lpd8806_spidev_sink_test_add_suite() {
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_left_top", test_lpd8806_map_output_to_point_left_top)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_left_bottom", test_lpd8806_map_output_to_point_left_bottom)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_right_bottom", test_lpd8806_map_output_to_point_right_bottom)) ||
+       (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_second_led_on_the_right", test_lpd8806_map_output_to_point_second_led_on_the_right)) ||
 
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_zero_with_inset", test_lpd8806_map_output_to_point_zero_with_inset)) ||
        (NULL == CU_add_test(pSuite, "test_lpd8806_map_output_to_point_one_with_inset", test_lpd8806_map_output_to_point_one_with_inset)) ||
