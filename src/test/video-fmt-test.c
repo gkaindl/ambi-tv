@@ -47,29 +47,71 @@ void copy_range(void* dst, void* src, unsigned int dst_size, unsigned int src_si
   }
 }
 
-void test_video_fmt_avg_rgb_for_block_yuyv() {
+void test_video_fmt_avg_rgb_for_block_yuyv_black() {
   unsigned char rgb[3];
-  // 16 by 4 pixels -> 64 pixels * 2 bytes per pixel = 128
-  unsigned char pixbuf[128] = { 0 };
+  // 4 by 4 pixels -> 16 pixels * 2 bytes per pixel = 32
+  unsigned char pixbuf[32] = { 0 };
 
-  unsigned char yuyu[] = {16, 128, 16, 128};
-  unsigned int offset = 0;
-  unsigned int width = 4;
-  copy_range(pixbuf, yuyu, 128, 4);
+  unsigned char yuyu_black[] = {16, 128, 16, 128};
+  copy_range(pixbuf, yuyu_black, 32, 4);
 
   int x = 0;
   int y = 0;
   int w = 4;
   int h = 4;
-  int bytesperline = 16 * 2;
+  int bytesperline = 4 * 2;
   int coarseness = 1;
   avg_rgb_for_block_yuyv(rgb, pixbuf, x, y, w, h, bytesperline, coarseness);
-  prgb("avg", rgb);
+  prgb("avg black: ", rgb);
   CU_ASSERT_EQUAL(rgb[0], 0);
   CU_ASSERT_EQUAL(rgb[1], 0);
   CU_ASSERT_EQUAL(rgb[2], 0);
 }
 
+void test_video_fmt_avg_rgb_for_block_yuyv_black_white_stripes() {
+  unsigned char rgb[3];
+  // 4 by 4 pixels -> 16 pixels * 2 bytes per pixel = 32
+  unsigned char pixbuf[32] = { 0 };
+
+  unsigned char yuyu_bw[] = {16, 128, 16, 128, 255, 128, 255, 128};
+
+  copy_range(pixbuf, yuyu_bw, 32, 8);
+
+  int x = 0;
+  int y = 0;
+  int w = 4;
+  int h = 4;
+  int bytesperline = 4 * 2;
+  int coarseness = 1;
+  avg_rgb_for_block_yuyv(rgb, pixbuf, x, y, w, h, bytesperline, coarseness);
+  prgb("avg stripes: ", rgb);
+  CU_ASSERT_EQUAL(rgb[0], 127);
+  CU_ASSERT_EQUAL(rgb[1], 127);
+  CU_ASSERT_EQUAL(rgb[2], 127);
+}
+
+void test_video_fmt_avg_rgb_for_block_yuyv_black_white_stripes_coarseness_four() {
+  unsigned char rgb[3];
+  // 4 by 4 pixels -> 16 pixels * 2 bytes per pixel = 32
+  unsigned char pixbuf[32] = { 0 };
+
+  unsigned char yuyu_bw[] = {16, 128, 16, 128, 255, 128, 255, 128};
+
+  copy_range(pixbuf, yuyu_bw, 32, 8);
+
+  int x = 0;
+  int y = 0;
+  int w = 4;
+  int h = 4;
+  int bytesperline = 4 * 2;
+  int coarseness = 4;
+  avg_rgb_for_block_yuyv(rgb, pixbuf, x, y, w, h, bytesperline, coarseness);
+  prgb("avg stripes coarseness four: ", rgb);
+  // Black
+  CU_ASSERT_EQUAL(rgb[0], 0);
+  CU_ASSERT_EQUAL(rgb[1], 0);
+  CU_ASSERT_EQUAL(rgb[2], 0);
+}
 int video_fmt_test_add_suite() {
    CU_pSuite pSuite = NULL;
 
@@ -81,7 +123,9 @@ int video_fmt_test_add_suite() {
    }
 
    /* add the tests to the suite */
-   if ((NULL == CU_add_test(pSuite, "test_video_fmt_avg_rgb_for_block_yuyv", test_video_fmt_avg_rgb_for_block_yuyv)) ||
+   if ((NULL == CU_add_test(pSuite, "test_video_fmt_avg_rgb_for_block_yuyv_black", test_video_fmt_avg_rgb_for_block_yuyv_black)) ||
+       (NULL == CU_add_test(pSuite, "test_video_fmt_avg_rgb_for_block_yuyv_black_white_stripes", test_video_fmt_avg_rgb_for_block_yuyv_black_white_stripes)) ||
+       (NULL == CU_add_test(pSuite, "test_video_fmt_avg_rgb_for_block_yuyv_black_white_stripes_coarseness_four", test_video_fmt_avg_rgb_for_block_yuyv_black_white_stripes_coarseness_four)) ||
        (NULL == CU_add_test(pSuite, "test_video_fmt_yuv_to_rgb_black", test_video_fmt_yuv_to_rgb_black)) ||
        (NULL == CU_add_test(pSuite, "test_video_fmt_yuv_to_rgb_white", test_video_fmt_yuv_to_rgb_white)) ||
        (NULL == CU_add_test(pSuite, "test_video_fmt_yuv_to_rgb_blue", test_video_fmt_yuv_to_rgb_blue)) ||
