@@ -56,9 +56,9 @@ void test_parse_led_string_range_ascending() {
    int ret = ambitv_parse_led_string(config_value, &led_str, &led_len);
 
    CU_ASSERT_EQUAL(led_len, 3);
-   CU_ASSERT_EQUAL((*led_strp)[0], 1);
-   CU_ASSERT_EQUAL((*led_strp)[1], 2);
-   CU_ASSERT_EQUAL((*led_strp)[2], 3);
+   CU_ASSERT_EQUAL((int)(*led_strp)[0], 1);
+   CU_ASSERT_EQUAL((int)(*led_strp)[1], 2);
+   CU_ASSERT_EQUAL((int)(*led_strp)[2], 3);
    CU_ASSERT_EQUAL(ret, 0);
 }
 
@@ -70,9 +70,9 @@ void test_parse_led_string_range_descending() {
    int ret = ambitv_parse_led_string(config_value, &led_str, &led_len);
 
    CU_ASSERT_EQUAL(led_len, 3);
-   CU_ASSERT_EQUAL((*led_strp)[0], 3);
-   CU_ASSERT_EQUAL((*led_strp)[1], 2);
-   CU_ASSERT_EQUAL((*led_strp)[2], 1);
+   CU_ASSERT_EQUAL((int)(*led_strp)[0], 3);
+   CU_ASSERT_EQUAL((int)(*led_strp)[1], 2);
+   CU_ASSERT_EQUAL((int)(*led_strp)[2], 1);
    CU_ASSERT_EQUAL(ret, 0);
 }
 
@@ -84,8 +84,8 @@ void test_parse_led_string_with_implicit_gaps() {
    int ret = ambitv_parse_led_string(config_value, &led_str, &led_len);
 
    CU_ASSERT_EQUAL(led_len, 2);
-   CU_ASSERT_EQUAL((*led_strp)[0], 1);
-   CU_ASSERT_EQUAL((*led_strp)[1], 3);
+   CU_ASSERT_EQUAL((int)(*led_strp)[0], 1);
+   CU_ASSERT_EQUAL((int)(*led_strp)[1], 3);
    CU_ASSERT_EQUAL(ret, 0);
 }
 
@@ -97,10 +97,10 @@ void test_parse_led_string_with_gaps() {
    int ret = ambitv_parse_led_string(config_value, &led_str, &led_len);
 
    CU_ASSERT_EQUAL(led_len, 4);
-   CU_ASSERT_EQUAL((*led_strp)[0], 1);
-   CU_ASSERT_EQUAL((*led_strp)[1], -1);
-   CU_ASSERT_EQUAL((*led_strp)[2], -1);
-   CU_ASSERT_EQUAL((*led_strp)[3], 4);
+   CU_ASSERT_EQUAL((int)(*led_strp)[0], 1);
+   CU_ASSERT_EQUAL((int)(*led_strp)[1], -1);
+   CU_ASSERT_EQUAL((int)(*led_strp)[2], -1);
+   CU_ASSERT_EQUAL((int)(*led_strp)[3], 4);
    CU_ASSERT_EQUAL(ret, 0);
 }
 
