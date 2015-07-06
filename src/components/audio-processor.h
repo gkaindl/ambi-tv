@@ -17,12 +17,12 @@
  *  along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __AMBITV_AVG_COLOR_PROCESSOR_H__
-#define __AMBITV_AVG_COLOR_PROCESSOR_H__
+#ifndef __AMBITV_AUDIO_PROCESSOR_H__
+#define __AMBITV_AUDIO_PROCESSOR_H__
 
 #include "../component.h"
 
 struct ambitv_processor_component*
-ambitv_avg_color_processor_create(const char* name, int argc, char** argv);
+ambitv_audio_processor_create(const char* name, int argc, char** argv);
 
-#endif // __AMBITV_AVG_COLOR_PROCESSOR_H__
+#endif // __AMBITV_AUDIO_PROCESSOR_H__

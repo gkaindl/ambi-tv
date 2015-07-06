@@ -18,7 +18,8 @@
 */
 
 #include <stdlib.h>
-
+#include <libio.h>
+#include <ctype.h>
 #include "util.h"
 #include "log.h"
 
@@ -137,4 +138,33 @@ ambitv_parse_led_string(const char* str, int** out_ptr, int* out_len)
 
 errReturn:
    return -1;
+}
+
+char *stristr(const char *String, const char *Pattern)
+{
+      char *pptr, *sptr, *start;
+
+      for (start = (char *)String; *start; start++)
+      {
+            /* find start of pattern in string */
+            for ( ; (*start && (toupper(*start) != toupper(*Pattern))); start++)
+                  ;
+            if (!*start)
+                  return 0;
+
+            pptr = (char *)Pattern;
+            sptr = (char *)start;
+
+            while (toupper(*sptr) == toupper(*pptr))
+            {
+                  sptr++;
+                  pptr++;
+
+                  /* if end of pattern then pattern was found */
+
+                  if (!*pptr)
+                        return (start);
+            }
+      }
+      return 0;
 }

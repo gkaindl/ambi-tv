@@ -28,11 +28,13 @@
 #include "log.h"
 
 #include "components/v4l2-grab-source.h"
+#include "components/audio-grab-source.h"
 #include "components/timer-source.h"
 #include "components/avg-color-processor.h"
 #include "components/edge-color-processor.h"
+#include "components/audio-processor.h"
 #include "components/mood-light-processor.h"
-#include "components/lpd8806-spidev-sink.h"
+#include "components/ledstripe-sink.h"
 
 #define LOGNAME      "registration: "
 
@@ -47,6 +49,10 @@ static struct ambitv_component_registration registrations[] = {
       .constructor      = (void* (*)(const char*, int, char**))ambitv_v4l2_grab_create
    },
    {
+      .name             = "audio-grab-source",
+      .constructor      = (void* (*)(const char*, int, char**))ambitv_audio_grab_create
+   },
+   {
       .name             = "timer-source",
       .constructor      = (void* (*)(const char*, int, char**))ambitv_timer_source_create
    },
@@ -59,14 +65,18 @@ static struct ambitv_component_registration registrations[] = {
       .constructor      = (void* (*)(const char*, int, char**))ambitv_edge_color_processor_create
    },
    {
+      .name             = "audio-processor",
+      .constructor      = (void* (*)(const char*, int, char**))ambitv_audio_processor_create
+   },
+  {
       .name             = "mood-light-processor",
       .constructor      = (void* (*)(const char*, int, char**))ambitv_mood_light_processor_create
    },
    {
-      .name             = "lpd8806-spidev-sink",
-      .constructor      = (void* (*)(const char*, int, char**))ambitv_lpd8806_create
+      .name             = "ledstripe-sink",
+      .constructor      = (void* (*)(const char*, int, char**))ambitv_ledstripe_create
    },
-   
+
    { NULL, NULL }
 };
 

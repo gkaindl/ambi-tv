@@ -27,9 +27,9 @@ enum ambitv_log_mode ambitv_log_mode      = ambitv_log_mode_console;
 static void
 ambitv_log_console(enum ambitv_log_priority priority, const char* fmt, va_list args)
 {
-   if (priority >= ambitv_log_error)
-      vfprintf(stderr, fmt, args);
-   else
+//   if (priority >= ambitv_log_error)
+//      vfprintf(stderr, fmt, args);
+//   else
       vprintf(fmt, args);
 }
 

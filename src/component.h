@@ -56,7 +56,7 @@ struct ambitv_processor_component {
 
    void(*f_print_configuration)(struct ambitv_processor_component*);
    
-   int (*f_consume_frame)(struct ambitv_processor_component*, void*, int, int, int, enum ambitv_video_format);
+   int (*f_consume_frame)(struct ambitv_processor_component*, void*, int, int, int, int);
    int (*f_update_sink)(struct ambitv_processor_component*, struct ambitv_sink_component*);
    void(*f_free_priv)(struct ambitv_processor_component*);
 };
@@ -85,6 +85,9 @@ ambitv_component_enable(void* component);
 
 void*
 ambitv_component_find_by_name(const char* name);
+
+void*
+ambitv_component_find_active_of_group(const char* name);
 
 void
 ambitv_component_print_configuration(void* component);

@@ -57,14 +57,26 @@ ambitv_component_find_by_name(const char* name)
 {
    int i;
    struct ambitv_any_component* component;
-   
    for (i=0; i<ambitv_num_components; i++) {
       component = ambitv_components[i];
-      
       if (0 == strcmp(component->name, name))
          return (void*)component;
    }
    
+   return NULL;
+}
+
+void*
+ambitv_component_find_active_of_group(const char* name)
+{
+   int i;
+   struct ambitv_any_component* component;
+   for (i=0; i<ambitv_num_components; i++) {
+      component = ambitv_components[i];
+      if (strstr(component->name, name) && component->active)
+         return (void*)component;
+   }
+
    return NULL;
 }
 

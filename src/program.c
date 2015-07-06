@@ -66,7 +66,6 @@ ambitv_program_append_component_with_name(struct ambitv_program* program, const 
       
       ret = 0;
    }
-   
    return ret;
 }
 
