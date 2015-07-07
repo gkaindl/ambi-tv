@@ -18,7 +18,7 @@ Mit einem lauffähig zu kaufenden Raspberry Pi ist es sehr leicht, ein eigenständ
 - der nun ebenfalls verfügbare Audiograbber-Treiber ermöglicht die tonabhängige Steuerung der LED (Spektrum-Analyzer)
 - Programme und Parameter können über Netzwerk kontrolliert werden, der Taster ist im Prinzip überflüssig
 - die 3D-Modi Side-by-Side (SBS) und Top-over-Bottom (TOB) können für eine richtig skalierte LED-Ansteuerung aktiviert werden
-- neben dem Chiptyp LPD8806 auf dem LED-Stripe wird nun auch der Chip WS2811 unterstützt
+- neben dem Chiptyp LPD8806 auf dem LED-Stripe werden nun auch die Chiptypen WS280x und WS281x unterstützt
 - die Randerkennung wurde überarbeitet um nicht durch Senderlogos oder Artefakte an den Seitenrändern gestört zu werden
 
 ## Verwendete GIT-Projekte
@@ -49,12 +49,12 @@ Hardwareaufbau:
 
     Raspberry Pi          Signal
     ---------------------------------
-    P1/19 (MOSI)          LPD8806 DATA
-    P1/23 (SCLK)          LPD8806 CLOCK
-    P1/12 (PWM)           WS2811 DATA
+    P1/19 (MOSI)          LPD880x DATA
+    P1/23 (SCLK)          LPD880x CLOCK
+    P1/12 (PWM)           WS28xx DATA
     P1/5                  Taster Pin A
     P1/6                  Taster Pin B
-
+    
 Hier die Pinbelegung des Raspberry:
 
 ![Raspberry Pi Wiring](doc/rpi-wiring.jpg)
@@ -98,7 +98,7 @@ Im Repository liegt eine Beispiel-Konfigurationsdatei mit einer Zusammenstellung
 
 ## Konfigurationsdatei
 
-ambi-tv verwendet eine Konfigurationsdatei für die Definition und Parametrierung von Komponenten und Programmen. Es können sogenannte **components** (also Funktionen) erstellt und parametriert sowies **programs** (also Programme), welche eine Zusammenstellung von Eingangs-, Verarbeitungs- und Ausgabefunktionen darstellen, festgelegt werden.
+ambi-tv verwendet eine Konfigurationsdatei für die Definition und Parametrierung von Komponenten und Programmen. Es können sogenannte **components** (also Funktionen) erstellt und parametriert sowie **programs** (also Programme), welche eine Zusammenstellung von Eingangs-, Verarbeitungs- und Ausgabefunktionen darstellen, festgelegt werden.
 
 Eine Komponente ist ein Teil des Datenflusses in ambi-tv. Es gibt Quellen (Video-Grabber, Audio-Grabber oder einfache Binärdatengeneratoren), Prozessoren (Verarbeitungskomponenten, welche die Quelldaten auswerten) und Senken (geben die bearbeiteten Daten an den LED-String weiter). Die gleiche Komponente kann beliebig oft bei feststehendem Komponenten-Namen unter verschiedenen Instanzen-Namen und mit jeweils unterschiedlichen Parametern angelegt werden. Eine Komponentendefinition (zwei Instanzen der gleichen Komponente mit unterschiedlichen Parametern) sieht so aus:
 
@@ -136,7 +136,7 @@ Im Moment unterstützt ambi-tv folgende Komponententypen mit ihren Einstellungen:
 - `video-norm`: Die genutzte Video-Norm. Es kann zwischen `PAL` (720x576 Pixel) und `NTSC` (720x480 Pixel) gewählt werden.  
 - `buffers`: Die vom Kernel für die Bilddaten angeforderten Puffer. Ein Wert zwischen 4 und 8 ist sinnvoll.  
 - `crop-top`, `crop-bottom`, `crop-left`, `crop-right`: Die Anzahl der Pixel, welche an den jeweiligen Rändern übersprungen und nicht ausgewertet werden sollen. Das ist zur Unterdrückung von Bildstörungen und Wandlungsartefakten sinnvoll.  
-- `autocrop-luminance-threshold`: Ein Wert zwischen 0 und 255, welcher als Schwellwert beim Überspringen von schwarzen Balken an den Bildrändern verwendet wird. Wird dieser Helligkeitswert innerhalb einer Zeile oder Spalte 5 Mal überschritten, wird das als Ende des schwarzen Balkens interpretiert und die folgenden zeilen bzw. Spalten an die Auswertung weitergegeben. Zu beachten ist, daß das Finden der schwarzen Balken und die oben eingestellten Bildschirmränder zusammenwirken. Eine negative Zahl schaltet das Suchen des schwarzen Balkens aus (default).
+- `autocrop-luminance-threshold`: Ein Wert zwischen 0 und 255, welcher als Schwellwert beim Überspringen von schwarzen Balken an den Bildrändern verwendet wird. Wird dieser Helligkeitswert innerhalb einer Zeile oder Spalte 5 Mal überschritten, wird das als Ende des schwarzen Balkens interpretiert und die folgenden Zeilen bzw. Spalten an die Auswertung weitergegeben. Zu beachten ist, daß das Finden der schwarzen Balken und die oben eingestellten Bildschirmränder zusammenwirken. Eine negative Zahl schaltet das Suchen des schwarzen Balkens aus (default).
 
 **audio-grab-source**: Der Audio-Grabber über das ALSA-Device des USB-Grabbers.  
 
@@ -159,7 +159,7 @@ Im Moment unterstützt ambi-tv folgende Komponententypen mit ihren Einstellungen:
   * `0` bedeutet "kein 3D". Das Bild wird normal ausgewertet
   * `1` bedeutet "3D im SBS-Format". Es wird nur die linke Bildhälfte ausgewertet und auf die gesamte Bildbreite skaliert.
   * `2` bedeutet "3D im TOB-Format". Es wird nur die obere Bildhälfte ausgewertet und auf die gesamte Bildhöhe skaliert.  
-- `box-width`, `box-height`: Die Breite und Höhe des Rechtecks in Pixeln, welches um eine LED herum für die Farbermittlung herangezogen wird. Die Led wird auf den Farbmittelwert dieses Rechtecks gesetzt. Je kleiner das Rechteck um so detaillierter aber auch unruhiher wird der Effekt. Hier sollte man etrwas experimentieren, um den an Bildschirmbreite und LED-Anzahl angepaßten optimalen Effekt zu bekommen.
+- `box-width`, `box-height`: Die Breite und Höhe des Rechtecks in Pixeln, welches um eine LED herum für die Farbermittlung herangezogen wird. Die LED wird auf den Farbmittelwert dieses Rechtecks gesetzt. Je kleiner das Rechteck um so detaillierter aber auch unruhiger wird der Effekt. Hier sollte man etwas experimentieren, um den an Bildschirmbreite und LED-Anzahl angepaßten optimalen Effekt zu bekommen.
 
 **mood-light-processor**: Erzeugt auch ohne Eingangsdaten ein Mood-Light, indem der komplette HSL-Farbraum dargestellt und langsam durchgeschoben wird.
 
@@ -169,25 +169,25 @@ Im Moment unterstützt ambi-tv folgende Komponententypen mit ihren Einstellungen:
 **audio-processor**: Verarbeitet die erfaßten Audio-Daten mittels FFT und wandelt sie in Farben um.
 
 - `name`: Der Instanzenname des Prozessors, unter welchem er mit den eingestellten Parametern in den Programmen verwendet werden kann.  
-- `atype`: Lehgt die Art und Weise der Verarbeitung der Audiodaten fest.
-  * `0` bedeutet "Audio-Spektum". Das FFT-Ergebnis wird als Farbband um den Bildschirm herum abgebildet. Die tiefen Frequenzen (rot) liegen dabei unten in der Mitte und laufen über das gesamte Farbband um den Bildschirm herum bis oben zu den höchsten Frequenzen (weiß)
-  * `1` bedeutet "Audio-Mittelwert". Auch hier wird das Spektrum zunächst auf das Farbspektrum abgebildet. Es wird eber kein Farbband ausgegeben sondern der sich aus allen berechneten Farben ergebende Mittelwert wird auf allen LED gleich ausgegeben. Das ergibt einen nicht so unruhigen Effekt wie das Spektrum.
+- `atype`: Legt die Art und Weise der Verarbeitung der Audiodaten fest.
+  * `0` bedeutet "Audio-Spektrum". Das FFT-Ergebnis wird als Farbband um den Bildschirm herum abgebildet. Die tiefen Frequenzen (rot) liegen dabei unten in der Mitte und laufen über das gesamte Farbband um den Bildschirm herum bis oben zu den höchsten Frequenzen (weiß)
+  * `1` bedeutet "Audio-Mittelwert". Auch hier wird das Spektrum zunächst auf das Farbspektrum abgebildet. Es wird aber kein Farbband ausgegeben sondern der sich aus allen berechneten Farben ergebende Mittelwert wird auf allen LED gleich ausgegeben. Das ergibt einen nicht so unruhigen Effekt wie das Spektrum.
 - `sensitivity`: Legt die prozentuale Verstärkung des Audiosignals vor der Verarbeitung fest. Damit kann das Ergebnis an kleinere oder stärkere Eingangspegel angepaßt werden. Werte zwischen 0 und 1000 sind möglich. 100 entspricht 1:1.
 - `smoothing`: Sorgt für eine Glättung des FFT-Ergebnisses um den optischen Effekt zu beruhigen und ein Flackern zu vermeiden. Es stehen drei Glättungsfilter zur Auswahl:
   * `1` bedeutet "Falloff-Filter", welches das Fallen des zugehörigen Pegels einer Gravitationssimulation entsprechend verzögert. Zunächst fällt der Pegel ohne weiteres Signal langsam, dann immer schneller. 
   * `2` bedeutet "Mittelwert-Filter". Dieses mittelt vergangene und aktuelle Pegel und sorgt so für einen verzögerten Pegelabfall.
-  * `4` bedeutet "Integrator-Filter". Das addiert die Pegel der Vergangenheit auf und fällt nur langsam ab. Dieses Filter sollte immer aktiviert sein, um die volle LED-Helligkeit zu erreichen.
-Es können mehrere Filter gleichzeitg aktiviert werden indem deren Zahlen addiert werden. `5` würde also z.B. Falloff- und Integrator-Filter gleichzeitig aktivieren. `0` deaktiviert die Glättung komplett. 
+  * `4` bedeutet "Integrator-Filter". Das addiert die Pegel der Vergangenheit auf und fällt nur langsam ab. Dieses Filter sollte immer aktiviert sein, um die volle LED-Helligkeit zu erreichen.  
+Es können mehrere Filter gleichzeitig aktiviert werden indem deren Zahlen addiert werden. `5` würde also z.B. Falloff- und Integrator-Filter gleichzeitig aktivieren. `0` deaktiviert die Glättung komplett. 
 - `linear`: Das Ergebnis der FFT ist logarithmisch. Kleinere Ausschläge bei einer bestimmten Frequenz werden also verstärkt dargestellt. Das kann zum optischen Verschwinden der Unterschiede zwischen den einzelnen Frequenzanteilen führen. Mit `1` kann deshalb die Linearisierung aktiviert werden, welche die Anhebung der geringeren Pegel rückgängig macht und für eine bessere Kanaltrennung sorgt. `0` schaltet die Linearisierung aus.
 
 **ledstripe-sink**: Die eigentliche Ansteuerung der LPD8806- bzw. WS281x- RGB LED Stripes.
 
 - `name`: Der Instanzenname der Senke, unter welchem sie mit den eingestellten Parametern in den Programmen verwendet werden kann.  
-- `led-device`: Das verwendete Device. Für LPD8806 z.B. `/dev/spidev0.0`. Für einen WS2812-Stripe z.B. `DMA5` für den DMA-Kanal 5
-- `dev-speed-hz`: Die Taktfrequenz für die Datenausgabe. Für LDP8806 z.B. `2500000` (2.5MHz). Für den WS281x-Stripe sind entweder `400000` oder `800000` möglich, abhängig von der Beschaltung der Chips durch den Stripe-Hersteller .
-- `dev-type`: Der angeschlossene LED-Stripe. Gültige Werte sind `LPD8806` und `WS2811`
-- `dev-pin`: Nur für WS2811. Der GPIO-Pin, an welchem die Daten ausgegeben werden sollen. Standard ist `18`.
-- `dev-inverse`: Nur für WS2811. Gibt an, ob der Pegelwandler das Ausgangssignal invertiert (`1`) oder nicht (`0`).
+- `led-device`: Das verwendete Device. Für LPD880x bzw. WS280x z.B. `/dev/spidev0.0`. Für einen WS281x-Stripe z.B. `DMA5` für den DMA-Kanal 5
+- `dev-speed-hz`: Die Taktfrequenz für die Datenausgabe. Für LDP880x bzw. Ws280x z.B. `2500000` (2.5MHz). Für den WS281x-Stripe sind entweder `400000` oder `800000` möglich, abhängig von der Beschaltung der Chips durch den Stripe-Hersteller .
+- `dev-type`: Der angeschlossene LED-Stripe. Gültige Werte sind `LPD880x`, `WS280x` und `WS281x`
+- `dev-pin`: Nur für WS281x. Der GPIO-Pin, an welchem die Daten ausgegeben werden sollen. Standard ist `18`.
+- `dev-inverse`: Nur für WS281x. Gibt an, ob der Pegelwandler das Ausgangssignal invertiert (`1`) oder nicht (`0`).
 - `leds-top`, `leds-left`, `leds-bottom`, `leds-right`: Beschreibt die LED-Positionen auf den Bildschirmseiten. Die Adressierung der LED beginnt bei 0. Die Adresse einer LED ist also deren Position auf dem Stripe minus 1. Es können sowohl einzelne Indices getrennt mit "," oder auch Bereiche verbunden mit "-" eingetragen werden. Fehlende LED werden mit einem "X" gekennzeichnet. Beispielsweise bedeutet "33-56" "LEDs 34 bis 57", "22-5" bedeutet "LEDs 23 bis 6 absteigend", und "13-0,4X,97-84" bedeutet "LEDs 14 bis 1, dann ein unbelegter Bereich in der Breite von 4 LED und anschließend noch die LEDs 98 bis 85". Die "X" sind vor allem im Bereich des Fernseherfußes oder der Einspeisung sinnvoll um die Positionsberechnung nicht durcheinanderzubringen. Die Aufzählung der LEDs geschieht generell von links nach rechts für die obere und untere Kante und von oben nach unten für die Seitenkanten.
 - `led-inset-top`, `led-inset-bottom`, `led-inset-left`, `led-inset-right`: Da die Stripes aufgrund ihrer Struktur nicht an beliebigen Stellen getrennt werden können, kann es an den Ecken vorkommen, daß die Streifen entweder länger oder kürzer als die eigentlichen Bildschirmabmessungen sind. Das kann mit diesen Prozentwerten einkalkuliert werden. So bedeutet z.B. ein Wert von '3.5' daß der Stripe an dieser Kante um 3,5% des Bildbereiches kürzer ist als der Bildbereich, ein Wert von "-1.2" bedeutet einen 1,2% längeren Streifen an dieser Kante.
 - `gamma-red`, `gamma-green`, `gamma-blue`: Legt die Gamma-Tabelle für die einzelnen Farben fest. Da die LED-Stripes einen linearen Farbraum umsetzen, ist eine vorherige Gamma-Korrektur für eine farbechte Wiederabe nötig. Zwar könnten alle Einzelfarben mit dem gleichen Gamma-Wert arbeiten, für eine Anpassung an LED-Toleranzen oder farbige Hintergründe können die Gamma-Werte für jede Farbe separat festgelegt werden um solche Verschiebungen ausgleichen zu können. Werte zwischen 1.6 und 1.8 sind brauchbar, testhalber kann man aber auch Werte zwischen 2.2 und 2.8, welche dem PAL- und NTSC-Farbraum entsprechen würden, ausprobieren.
@@ -199,7 +199,7 @@ Es können mehrere Filter gleichzeitg aktiviert werden indem deren Zahlen addiert
 
 ## ambi-tv erweitern
 
-Aufgrund der komponentenbasierten Struktur von ambi-tv gestaltet sich die Erstellung eigener Komponenten (Quellen, Prozessoren und Sinks) realtiv einfach. Aus der Datei `component.h`, wird ersichlich, wie man diese in die Verwaltung einfügen kann. Die Komponenten selbst kommen nach `src/components`.
+Aufgrund der komponentenbasierten Struktur von ambi-tv gestaltet sich die Erstellung eigener Komponenten (Quellen, Prozessoren und Sinks) relativ einfach. Aus der Datei `component.h`, wird ersichtlich, wie man diese in die Verwaltung einfügen kann. Die Komponenten selbst kommen nach `src/components`.
 
 Die Grundidee dabei ist, daß jede Komponente nur eine bestimmte Anzahl Funktionen bedienen muß, welche in einer immer gleichen Struktur mi Funktionspointern zusammengefaßt werden. Ihre Konfiguration erfolgt über den Kommandozeilenmechanismus `int argc, char** argv` welcher es ermöglich, die komfortable Funktion `getopt_long` für die Parameterauswertung zu verwenden.
 
@@ -243,4 +243,4 @@ Nicht vergessen: statt "color" die Farben "red", "green" oder "blue" einsetzen.
 
 ## Tools
 
-Für Linux-Receiver mit Neutrino unnd installierten Plugins FlexMenü, Input und MessageBox liegt in "tools/" das Script "ambi-tv-config", mit welchem man ambi-tv vom Receiver aus menügesteuert kontrollieren und parametrieren kann. Einige Screenshots der Menüs, welche einige Möglichkeiten der Steuerung demonstrieren sind [hier](doc/ambi-config.jpg) zusammengestellt. 
+Für Linux-Receiver mit Neutrino und installierten Plugins FlexMenü, Input und MessageBox liegt in "tools/" das Script "ambi-tv-config", mit welchem man ambi-tv vom Receiver aus menügesteuert kontrollieren und parametrieren kann. Einige Screenshots der Menüs, welche einige Möglichkeiten der Steuerung demonstrieren sind [hier](doc/ambi-config.jpg) zusammengestellt. 
