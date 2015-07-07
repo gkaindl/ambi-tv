@@ -244,7 +244,7 @@ static void ambitv_ledstripe_clear_leds(struct ambitv_sink_component* component)
 	if (NULL != ledstripe->grb && ((!ledstripe->use_spi) || (ledstripe->fd >= 0)))
 	{
 		int i;
-		unsigned char pattern = (ledstripe->dev_type == LED_TYPE_LPD880x) ? 0x80 : 0x00;
+		unsigned char pattern = (ledstripe->use_8bit) ? 0x00 : 0x80;
 
 		// send 3 times, in case there's noise on the line,
 		// so that all LEDs will definitely be off afterwards.
@@ -875,7 +875,7 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 			goto errReturn;
 
 		priv->grblen = sizeof(unsigned char) * 3 * priv->actual_num_leds;
-		priv->grb = (unsigned char*) malloc(priv->grblen + priv->use_zeroend);
+		priv->grb = (unsigned char*) malloc(priv->grblen + 1);
 
 		if (priv->num_bbuf > 1)
 		{
@@ -889,7 +889,7 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 		else
 			priv->num_bbuf = 0;
 
-		pattern = (((struct ambitv_ledstripe_priv*) (ledstripe->priv))->dev_type == LED_TYPE_LPD880x) ? 0x80 : 0x00;
+		pattern = (((struct ambitv_ledstripe_priv*) (ledstripe->priv))->use_8bit) ? 0x00 : 0x80;
 		memset(priv->grb, pattern, priv->grblen);
 		priv->grb[priv->grblen] = 0x00; // latch byte
 
