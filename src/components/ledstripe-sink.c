@@ -56,11 +56,11 @@ static const char ambitv_ledstripe_spidev_lsbf = 0;
 struct ambitv_ledstripe_priv
 {
 	char* dev_name;
-	int fd, dev_speed, dev_type, dev_pin, dev_inverse, num_leds, actual_num_leds, grblen, use_spi, use_8bit,
+	int fd, dev_speed, dev_type, dev_pin, dev_inverse, num_leds, actual_num_leds, out_len, use_spi, use_8bit,
 			use_zeroend;
 	int led_len[4], *led_str[4];   // top, bottom, left, right
 	double led_inset[4];              // top, bottom, left, right
-	unsigned char* grb;
+	unsigned char* out;
 	unsigned char** bbuf;
 	int num_bbuf, bbuf_idx;
 	int brightness, intensity[3];
@@ -152,9 +152,9 @@ static int ambitv_ledstripe_commit_outputs(struct ambitv_sink_component* compone
 	{
 		if (ledstripe->fd >= 0)
 		{
-			ret = write(ledstripe->fd, ledstripe->grb, ledstripe->grblen + ledstripe->use_zeroend);
+			ret = write(ledstripe->fd, ledstripe->out, ledstripe->out_len + ledstripe->use_zeroend);
 
-			if (ret != ledstripe->grblen + ledstripe->use_zeroend)
+			if (ret != ledstripe->out_len + ledstripe->use_zeroend)
 			{
 				if (ret <= 0)
 					ret = -errno;
@@ -185,7 +185,7 @@ static int ambitv_ledstripe_commit_outputs(struct ambitv_sink_component* compone
 					{
 						uint8_t symbol = SYMBOL_LOW;
 
-						if (ledstripe->grb[3 * i + j] & (1 << k))
+						if (ledstripe->out[3 * i + j] & (1 << k))
 						{
 							symbol = SYMBOL_HIGH;
 						}
@@ -241,7 +241,7 @@ static void ambitv_ledstripe_clear_leds(struct ambitv_sink_component* component)
 {
 	struct ambitv_ledstripe_priv* ledstripe = (struct ambitv_ledstripe_priv*) component->priv;
 
-	if (NULL != ledstripe->grb && ((!ledstripe->use_spi) || (ledstripe->fd >= 0)))
+	if (NULL != ledstripe->out && ((!ledstripe->use_spi) || (ledstripe->fd >= 0)))
 	{
 		int i;
 		unsigned char pattern = (ledstripe->use_8bit) ? 0x00 : 0x80;
@@ -250,7 +250,7 @@ static void ambitv_ledstripe_clear_leds(struct ambitv_sink_component* component)
 		// so that all LEDs will definitely be off afterwards.
 		for (i = 0; i < 3; i++)
 		{
-			memset(ledstripe->grb, pattern, ledstripe->grblen);
+			memset(ledstripe->out, pattern, ledstripe->out_len);
 			(void) ambitv_ledstripe_commit_outputs(component);
 		}
 	}
@@ -262,7 +262,6 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 	{ &r, &g, &b };
 	struct ambitv_ledstripe_priv* ledstripe = (struct ambitv_ledstripe_priv*) component->priv;
 	unsigned char *bptr;
-	int *pr = &r, *pg = &g, *pb = &b;
 
 	if (idx >= ambitv_special_sinkcommand_brightness)
 	{
@@ -316,24 +315,17 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 		{
 			unsigned char* acc = ledstripe->bbuf[ledstripe->bbuf_idx];
 
-			if (ledstripe->dev_type == LED_TYPE_WS280x) // change order of colors for WS820x
-			{
-				pr = &b;
-				pg = &r;
-				pb = &g;
-			}
-
-			acc[3 * ii] = *pg;
-			acc[3 * ii + 1] = *pr;
-			acc[3 * ii + 2] = *pb;
+			acc[3 * ii] = g;
+			acc[3 * ii + 1] = r;
+			acc[3 * ii + 2] = b;
 
 			r = g = b = 0;
 
 			for (i = 0; i < ledstripe->num_bbuf; i++)
 			{
-				*pg += ledstripe->bbuf[i][3 * ii];
-				*pr += ledstripe->bbuf[i][3 * ii + 1];
-				*pb += ledstripe->bbuf[i][3 * ii + 2];
+				g += ledstripe->bbuf[i][3 * ii];
+				r += ledstripe->bbuf[i][3 * ii + 1];
+				b += ledstripe->bbuf[i][3 * ii + 2];
 			}
 
 			g /= ledstripe->num_bbuf;
@@ -349,18 +341,27 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 				*rgb[i] = ambitv_color_map_with_lut(ledstripe->gamma_lut[i], *rgb[i]);
 		}
 
-		bptr = ledstripe->grb + (3 * ii);
-		if (ledstripe->dev_type == LED_TYPE_LPD880x)
+		bptr = ledstripe->out + (3 * ii);
+		if (ledstripe->use_8bit)
+		{
+			if (ledstripe->dev_type == LED_TYPE_WS280x) // change order of colors for WS280x
+			{
+				*bptr++ = r;
+				*bptr++ = g;
+				*bptr = b;
+			}
+			else
+			{
+				*bptr++ = g;
+				*bptr++ = r;
+				*bptr = b;
+			}
+		}
+		else
 		{
 			*bptr++ = g >> 1 | 0x80;
 			*bptr++ = r >> 1 | 0x80;
 			*bptr = b >> 1 | 0x80;
-		}
-		else
-		{
-			*bptr++ = *pg;
-			*bptr++ = *pr;
-			*bptr = *pb;
 		}
 
 		ret = 0;
@@ -436,7 +437,7 @@ static int ambitv_ledstripe_start(struct ambitv_sink_component* component)
 		if (stristr(ledstripe->dev_name, "DMA") != NULL)
 			sscanf(ledstripe->dev_name + 3, "%d", &ws2811.dmanum);
 		ws2811.freq = ledstripe->dev_speed;
-		ws2811.channel[0].leds = ledstripe->grb;
+		ws2811.channel[0].leds = ledstripe->out;
 		ws2811.channel[0].count = ledstripe->actual_num_leds;
 		ws2811.channel[0].gpionum = ledstripe->dev_pin;
 		ws2811.channel[0].invert = ledstripe->dev_inverse;
@@ -812,8 +813,8 @@ void ambitv_ledstripe_free(struct ambitv_sink_component* component)
 		if (NULL != ledstripe->dev_name)
 			free(ledstripe->dev_name);
 
-		if (NULL != ledstripe->grb)
-			free(ledstripe->grb);
+		if (NULL != ledstripe->out)
+			free(ledstripe->out);
 
 		if (NULL != ledstripe->bbuf)
 		{
@@ -874,24 +875,24 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 		if (ambitv_ledstripe_configure(ledstripe, argc, argv) < 0)
 			goto errReturn;
 
-		priv->grblen = sizeof(unsigned char) * 3 * priv->actual_num_leds;
-		priv->grb = (unsigned char*) malloc(priv->grblen + 1);
+		priv->out_len = sizeof(unsigned char) * 3 * priv->actual_num_leds;
+		priv->out = (unsigned char*) malloc(priv->out_len + 1);
 
 		if (priv->num_bbuf > 1)
 		{
 			priv->bbuf = (unsigned char**) malloc(sizeof(unsigned char*) * priv->num_bbuf);
 			for (i = 0; i < priv->num_bbuf; i++)
 			{
-				priv->bbuf[i] = (unsigned char*) malloc(priv->grblen);
-				memset(priv->bbuf[i], 0, priv->grblen);
+				priv->bbuf[i] = (unsigned char*) malloc(priv->out_len);
+				memset(priv->bbuf[i], 0, priv->out_len);
 			}
 		}
 		else
 			priv->num_bbuf = 0;
 
 		pattern = (((struct ambitv_ledstripe_priv*) (ledstripe->priv))->use_8bit) ? 0x00 : 0x80;
-		memset(priv->grb, pattern, priv->grblen);
-		priv->grb[priv->grblen] = 0x00; // latch byte
+		memset(priv->out, pattern, priv->out_len);
+		priv->out[priv->out_len] = 0x00; // latch byte
 
 		for (i = 0; i < 3; i++)
 		{
