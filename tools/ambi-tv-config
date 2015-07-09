@@ -130,7 +130,7 @@ case "$2" in
 
 	echo WIDTH=440 > $MENUFILE
 	echo HIGHT=500 >> $MENUFILE
-	echo LINESPP=$((10+$hasaudio)) >> $MENUFILE
+	echo LINESPP=$((11+$hasaudio)) >> $MENUFILE
 	echo FONTSIZE=24 >> $MENUFILE
 	echo MENU=Ambilight-Steuerung >> $MENUFILE
 	echo COMMENT=!Ambilight-Modus >> $MENUFILE

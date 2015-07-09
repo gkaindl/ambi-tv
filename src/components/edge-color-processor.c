@@ -193,7 +193,7 @@ static void ambitv_edge_color_processor_print_configuration(struct ambitv_proces
 {
 	struct ambitv_edge_processor_priv* edge = (struct ambitv_edge_processor_priv*) component->priv;
 
-	ambitv_log(ambitv_log_info, "\type:  %d\n\tbox-width:  %d\n"
+	ambitv_log(ambitv_log_info, "\ttype:  %d\n\tbox-width:  %d\n"
 			"\tbox-height: %d\n", edge->type, edge->boxsize[0], edge->boxsize[1]);
 }
 
