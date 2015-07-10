@@ -243,6 +243,8 @@ static int ambitv_audio_processor_update_sink(struct ambitv_processor_component*
 		struct ambitv_sink_component* sink)
 {
 	int i, n_out, ret = 0;
+	unsigned int r, g, b;
+	double dr, dg, db, dx;
 	double bsize, csize, level = 0.0;
 	double fcpos1;
 	double cpos2;
@@ -265,17 +267,25 @@ static int ambitv_audio_processor_update_sink(struct ambitv_processor_component*
 	{
 		n_out = sink->f_num_outputs(sink);
 
+		dr = dg = db = 0.0;
+		level = 0.0;
 		if ((audio->type == ATYPE_LMETER) || (audio->type == ATYPE_AVERAGE))
 		{
-			for (i = 0; i < BANDS; i++)
-				level += f[i + BANDOFFS];
+			for (i = 0; i < BANDS; i++)				// calculate average level
+			{
+				dx = f[i + BANDOFFS] / 512.0;
+				if (dx > 1.0)
+					dx = 1.0;
+				if (audio->linear)
+					dx *= dx;
+				level += dx;
+			}
 			level /= BANDS;
-			level *= 4.0;
+			level *= 3 * MSIZE;
 			if ((audio->avgcolor) || (audio->type == ATYPE_AVERAGE))
 			{
-				double r = 0, g = 0, b = 0, x = 0;
 
-				for (i = 0; i < BANDS; i++)
+				for (i = 0; i < BANDS; i++)			// calculate average color
 				{
 					csize = (double) (COLORS) / (double) (BANDS);
 					cpos2 = modf((double) i * csize, &fcpos1);
@@ -287,37 +297,36 @@ static int ambitv_audio_processor_update_sink(struct ambitv_processor_component*
 						tx = 1.0;
 					if (audio->linear)
 						tx *= tx;
-					x = (((double) colors.red[cpos1] * cdiff1) + ((double) colors.red[cpos1 + 1] * cdiff2)) * tx;
-					if (x > 255)
-						x = 255;
-					r += x;
-					x = (((double) colors.green[cpos1] * cdiff1) + ((double) colors.green[cpos1 + 1] * cdiff2)) * tx;
-					if (x > 255)
-						x = 255;
-					g += x;
-					x = (((double) colors.blue[cpos1] * cdiff1) + ((double) colors.blue[cpos1 + 1] * cdiff2)) * tx;
-					if (x > 255)
-						x = 255;
-					b += x;
+					dx = (((double) colors.red[cpos1] * cdiff1) + ((double) colors.red[cpos1 + 1] * cdiff2)) * tx;
+					if (dx > 255)
+						dx = 255;
+					dr += dx;
+					dx = (((double) colors.green[cpos1] * cdiff1) + ((double) colors.green[cpos1 + 1] * cdiff2)) * tx;
+					if (dx > 255)
+						dx = 255;
+					dg += dx;
+					dx = (((double) colors.blue[cpos1] * cdiff1) + ((double) colors.blue[cpos1 + 1] * cdiff2)) * tx;
+					if (dx > 255)
+						dx = 255;
+					db += dx;
 				}
-				r /= BANDS;
-				g /= (3 * BANDS) / 2;
-				b /= (3 * BANDS) / 2;
-				if (audio->type == ATYPE_LMETER)
+				dr /= BANDS;
+				dg /= (3 * BANDS) / 2;
+				db /= (3 * BANDS) / 2;
+				dx = 1.0;
+				if (audio->type == ATYPE_LMETER)	// normalize brightness to 100%
 				{
-					if (r > x)
-						x = r;
-					if (g > x)
-						x = g;
-					if (b > x)
-						x = b;
-					x = 255.0 / x;
+					if (dr > dx)
+						dx = dr;
+					if (dg > dx)
+						dx = dg;
+					if (db > dx)
+						dx = db;
+					dx = 255.0 / dx;
 				}
-				else
-					x = 1.0;
-				audio->lcolor.r = r * x;
-				audio->lcolor.g = g * x;
-				audio->lcolor.b = b * x;
+				audio->lcolor.r = (int) (dr * dx);
+				audio->lcolor.g = (int) (dg * dx);
+				audio->lcolor.b = (int) (db * dx);
 			}
 		}
 
@@ -325,8 +334,7 @@ static int ambitv_audio_processor_update_sink(struct ambitv_processor_component*
 		{
 			int x, y, ii = 0;
 
-			csize = (double) (3 * MSIZE) / (double) (COLORS - 1);
-			bsize = (double) (3 * MSIZE) / BANDS;
+			// calculate LED position on screen
 			sink->f_map_output_to_point(sink, i, 2 * MSIZE, MSIZE, &x, &y);
 			if (y == 0)				// top
 			{
@@ -350,8 +358,9 @@ static int ambitv_audio_processor_update_sink(struct ambitv_processor_component*
 
 			}
 
-			if (audio->type == ATYPE_LMETER)
+			switch (audio->type)
 			{
+			case ATYPE_LMETER:
 				if ((int) level > ii)
 				{
 					sink->f_set_output_to_rgb(sink, i, audio->lcolor.r, audio->lcolor.g, audio->lcolor.b);
@@ -360,15 +369,15 @@ static int ambitv_audio_processor_update_sink(struct ambitv_processor_component*
 				{
 					sink->f_set_output_to_rgb(sink, i, 0, 0, 0);
 				}
-			}
-			else if (audio->type == ATYPE_AVERAGE)
-			{
-				sink->f_set_output_to_rgb(sink, i, audio->lcolor.r, audio->lcolor.g, audio->lcolor.b);
-			}
-			else
-			{
-				unsigned char r, g, b;
+				break;
 
+			case ATYPE_AVERAGE:
+				sink->f_set_output_to_rgb(sink, i, audio->lcolor.r, audio->lcolor.g, audio->lcolor.b);
+				break;
+
+			case ATYPE_SPECTRUM:
+				csize = (double) (3 * MSIZE) / (double) (COLORS - 1);
+				bsize = (double) (3 * MSIZE) / BANDS;
 				cpos2 = modf((double) ii / csize, &fcpos1);
 				cpos1 = fcpos1;
 				cdiff1 = 1.0 - cpos2;
@@ -393,6 +402,7 @@ static int ambitv_audio_processor_update_sink(struct ambitv_processor_component*
 					b = 255;
 
 				sink->f_set_output_to_rgb(sink, i, r, g, b);
+				break;
 			}
 		}
 	}
