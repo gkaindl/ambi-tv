@@ -276,7 +276,7 @@ static int ambitv_audio_processor_update_sink(struct ambitv_processor_component*
 				dx = f[i + BANDOFFS] / 512.0;
 				if (dx > 1.0)
 					dx = 1.0;
-				if (audio->linear)
+				else if (audio->linear)
 					dx *= dx;
 				level += dx;
 			}
@@ -327,6 +327,21 @@ static int ambitv_audio_processor_update_sink(struct ambitv_processor_component*
 				audio->lcolor.r = (int) (dr * dx);
 				audio->lcolor.g = (int) (dg * dx);
 				audio->lcolor.b = (int) (db * dx);
+				if (audio->type == ATYPE_AVERAGE)
+				{
+					dx = audio->lcolor.r * 2;
+					if (dx > 255)
+						dx = 255;
+					audio->lcolor.r = dx;
+					dx = audio->lcolor.g * 2;
+					if (dx > 255)
+						dx = 255;
+					audio->lcolor.g = dx;
+					dx = audio->lcolor.b * 2;
+					if (dx > 255)
+						dx = 255;
+					audio->lcolor.b = dx;
+				}
 			}
 		}
 

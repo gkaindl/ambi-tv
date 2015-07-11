@@ -48,6 +48,8 @@
 #define BUTTON_MILLIS         250
 #define BUTTON_MILLIS_HYST    10
 
+static const char html_header[] = "HTTP/1.1 200 OK\nContent-type: text/html\n";
+
 struct ambitv_main_conf
 {
 	int program_idx;
@@ -160,6 +162,7 @@ static int ambitv_runloop()
 	fd_set fds, ex_fds;
 	struct timeval tv;
 	FILE *fh;
+	unsigned long fsize;
 
 	FD_ZERO(&fds);
 	FD_ZERO(&ex_fds);
@@ -186,18 +189,35 @@ static int ambitv_runloop()
 
 		if ((bufferptr = strstr(buffer, "getconfig")) != NULL)
 		{
-			// send header
-			write(newsockfd, "HTTP/1.1 200 OK\n", 16);
-			write(newsockfd, "Content-type: text/html\n", 25);
-			write(newsockfd, "Content-length:\n\n", 18);
+			// set header
+			write(newsockfd, html_header, sizeof(html_header));
 			if ((fh = fopen(conf.config_path, "r")) != NULL)
 			{
-				while (fgets(buffer, sizeof(buffer), fh))
+				fseek(fh, 0L, SEEK_END);
+				fsize = ftell(fh);
+				fseek(fh, 0L, SEEK_SET);
+				sprintf(buffer, "Content-length: %ld\n", fsize);
+				do
 				{
 					write(newsockfd, buffer, strlen(buffer));
-				}
+				} while (fgets(buffer, sizeof(buffer), fh));
 				ret = 9999;
 				fclose(fh);
+			}
+			else
+				ret = -1;
+		}
+		else if ((bufferptr = strstr(buffer, "getmode")) != NULL)
+		{
+			// set header
+			write(newsockfd, html_header, sizeof(html_header));
+			if ((fh = fopen(conf.config_path, "r")) != NULL)
+			{
+				sprintf(buffer, "Content-length: %d\n", (conf.cur_prog > 9) ? 2 : 1);
+				write(newsockfd, buffer, strlen(buffer));
+				sprintf(buffer, "%d\n", conf.cur_prog);
+				write(newsockfd, buffer, strlen(buffer));
+				ret = 9999;
 			}
 			else
 				ret = -1;
@@ -207,7 +227,7 @@ static int ambitv_runloop()
 			scomponent = (struct ambitv_sink_component*) ambitv_component_find_by_name("led-frame");
 			if (scomponent != NULL)
 			{
-				if ((done = ((bufferptr = strstr(buffer, "mode=")) != NULL))!=0)
+				if ((done = ((bufferptr = strstr(buffer, "mode=")) != NULL)) != 0)
 				{
 					bufferptr = strchr(buffer, '=') + 1;
 					newval = *bufferptr - '0';
@@ -217,6 +237,8 @@ static int ambitv_runloop()
 						if (ret < 0)
 							ambitv_log(ambitv_log_error, LOGNAME "failed to start program '%s'.\n",
 									ambitv_programs[newval]->name);
+						else
+							conf.cur_prog = newval;
 					}
 					else
 					{
@@ -226,7 +248,7 @@ static int ambitv_runloop()
 									ambitv_programs[conf.cur_prog]->name);
 					}
 				}
-				else if ((done = ((bufferptr = strstr(buffer, "brightness=")) != NULL))!=0)
+				else if ((done = ((bufferptr = strstr(buffer, "brightness=")) != NULL)) != 0)
 				{
 					bufferptr = strchr(buffer, '=') + 1;
 					newval = atoi(bufferptr);
@@ -243,7 +265,7 @@ static int ambitv_runloop()
 
 					for (idx = 0; idx < 6 && !found; idx++)
 					{
-						if ((done = ((bufferptr = strstr(buffer, gcolors[idx])) != NULL))!=0)
+						if ((done = ((bufferptr = strstr(buffer, gcolors[idx])) != NULL)) != 0)
 						{
 							found = 1;
 							bufferptr = strchr(buffer, '=') + 1;
@@ -258,33 +280,37 @@ static int ambitv_runloop()
 				pcomponent = (struct ambitv_processor_component*) ambitv_component_find_active_of_group("audio-proc");
 				if (pcomponent != NULL)
 				{
-					if ((done = ((bufferptr = strstr(buffer, "typey=")) != NULL))!=0)
+					if ((done = ((bufferptr = strstr(buffer, "typey=")) != NULL)) != 0)
 					{
 						bufferptr = strchr(buffer, '=') + 1;
 						newval = atoi(bufferptr);
 						if (newval >= 0 && newval <= 1000)
-							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval, ambitv_special_audiocommand_type);
+							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval,
+									ambitv_special_audiocommand_type);
 					}
-					else if ((done = ((bufferptr = strstr(buffer, "sensitivity=")) != NULL))!=0)
+					else if ((done = ((bufferptr = strstr(buffer, "sensitivity=")) != NULL)) != 0)
 					{
 						bufferptr = strchr(buffer, '=') + 1;
 						newval = atoi(bufferptr);
 						if (newval >= 0 && newval <= 1000)
-							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval, ambitv_special_audiocommand_sensitivity);
+							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval,
+									ambitv_special_audiocommand_sensitivity);
 					}
-					else if ((done = ((bufferptr = strstr(buffer, "smoothing=")) != NULL))!=0)
+					else if ((done = ((bufferptr = strstr(buffer, "smoothing=")) != NULL)) != 0)
 					{
 						bufferptr = strchr(buffer, '=') + 1;
 						newval = atoi(bufferptr);
 						if (newval >= 0 && newval <= 1000)
-							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval, ambitv_special_audiocommand_smoothing);
+							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval,
+									ambitv_special_audiocommand_smoothing);
 					}
-					else if ((done = ((bufferptr = strstr(buffer, "linear=")) != NULL))!=0)
+					else if ((done = ((bufferptr = strstr(buffer, "linear=")) != NULL)) != 0)
 					{
 						bufferptr = strchr(buffer, '=') + 1;
 						newval = atoi(bufferptr);
 						if (newval >= 0 && newval <= 1000)
-							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval, ambitv_special_audiocommand_linear);
+							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval,
+									ambitv_special_audiocommand_linear);
 					}
 				}
 			}

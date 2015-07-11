@@ -219,6 +219,11 @@ Aus dieser Datei kann man Anzahl, Anordnung und Namen der implementierten Progra
 *Modus setzen:*  
 `http://raspi:port?mode=n`
 
+Der aktuell eingestellte Modus kann auch wieder für die Verwendung in Steuerprogrammen abgefragt werden. Er wird als ASCII-Zahl beginnend bei "0" für das erste Programm zurückgeliefert.
+
+*Modus abfragen:*  
+`http://raspi:port?getmode`
+
 Welche Modusnummer welches Programm aufruft und wieviele Modi es gibt, hängt von den Einträgen in der Config-Datei ab. Alle Werte, die größer als der maximal mögliche Modus sind schalten das Ambilight aus.
 
 *Gesamthelligkeit setzen (0...100%):*  
