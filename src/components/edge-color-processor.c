@@ -45,10 +45,10 @@ static int ambitv_edge_color_processor_handle_frame(struct ambitv_processor_comp
 {
 	struct ambitv_edge_processor_priv* edge = (struct ambitv_edge_processor_priv*) component->priv;
 
-	if(edge->type & 0x01)
-		width >>=1;
-	if(edge->type & 0x02)
-		height >>=1;
+	if (edge->type & 0x01)
+		width >>= 1;
+	if (edge->type & 0x02)
+		height >>= 1;
 	edge->frame = frame;
 	edge->width = width;
 	edge->height = height;
@@ -86,10 +86,10 @@ static int ambitv_edge_color_processor_update_sink(struct ambitv_processor_compo
 
 			if (0 == sink->f_map_output_to_point(sink, i, edge->width, edge->height, &x, &y))
 			{
-				x = CONSTRAIN(x - 4, 0, edge->width);
-				y = CONSTRAIN(y - 4, 0, edge->height);
-				x2 = CONSTRAIN(x + 4, 0, edge->width);
-				y2 = CONSTRAIN(y + 4, 0, edge->height);
+				x = CONSTRAIN(x - (edge->boxsize[0] >> 1), 0, edge->width);
+				y = CONSTRAIN(y - (edge->boxsize[1] >> 1), 0, edge->height);
+				x2 = CONSTRAIN(x + (edge->boxsize[0] >> 1), 0, edge->width);
+				y2 = CONSTRAIN(y + (edge->boxsize[1] >> 1), 0, edge->height);
 
 				ambitv_video_fmt_avg_rgb_for_block(rgb, edge->frame, x, y, x2 - x, y2 - y, edge->bytesperline,
 						edge->fmt, 4);

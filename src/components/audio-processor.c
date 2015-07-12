@@ -615,7 +615,6 @@ ambitv_audio_processor_create(const char* name, int argc, char** argv)
 		priv->linear = 1;
 
 		// process [smoothing]: calculate gravity
-//		g = ((float)height / 400) * pow((60 / (float)framerate), 2.5);
 		g = ((float) MAXVAL / 400) * pow((60 / (float) framerate), 2.5);
 
 		// process: calculate cutoff frequencies
