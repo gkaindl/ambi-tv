@@ -23,7 +23,7 @@ LDFLAGS = -lpthread -lasound -lm -lfftw3
 AMBITV = ambi-tv
 SRC_AMBITV = src/main.c src/video-fmt.c src/parse-conf.c src/component.c   	\
 	src/registrations.c src/util.c src/program.c src/log.c src/color.c      \
-	src/gpio.c src/dma.c src/pwm.c src/ws2811.c                             \
+	src/gpio.c src/dma.c src/pwm.c src/pwm_dev.c                             \
 	src/components/v4l2-grab-source.c 										\
 	src/components/audio-grab-source.c										\
 	src/components/avg-color-processor.c  									\

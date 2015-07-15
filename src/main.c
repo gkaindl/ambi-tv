@@ -68,7 +68,7 @@ const char flagfile[] = "/tmp/.ambi-tv.mode";
 int sockfd = -1, newsockfd = -1;
 socklen_t clilen;
 struct sockaddr_in serv_addr, cli_addr;
-char buffer[256], *bufferptr;
+char buffer[512], *bufferptr;
 
 static void ambitv_signal_handler(int signum)
 {

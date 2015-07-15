@@ -1,5 +1,5 @@
 /*
- * ws2811.h
+ * pwm_dev.h
  *
  * Copyright (c) 2014 Jeremy Garff <jer @ jers.net>
  *
@@ -28,9 +28,8 @@
  */
 
 
-#ifndef __WS2811_H__
-#define __WS2811_H__
-
+#ifndef __PWM_DEV_H__
+#define __PWM_DEV_H__
 
 #include "clk.h"
 #include "gpio.h"
@@ -53,7 +52,7 @@
 
 
 
-typedef struct ws2811_device
+typedef struct pwm_dev_device
 {
     volatile uint8_t *pwm_raw;
     volatile dma_t *dma;
@@ -64,11 +63,11 @@ typedef struct ws2811_device
     volatile gpio_t *gpio;
     volatile cm_pwm_t *cm_pwm;
     int max_count;
-} ws2811_device_t;
+} pwm_dev_device_t;
 
-extern ws2811_device_t ws2811_device;
+extern pwm_dev_device_t pwm_dev_device;
 
-//typedef uint32_t ws2811_led_t;                   //< 0x00RRGGBB
+//typedef uint32_t pwm_dev_led_t;                   //< 0x00RRGGBB
 typedef struct
 {
     int gpionum;                                 //< GPIO Pin with PWM alternate function, 0 if unused
@@ -76,25 +75,25 @@ typedef struct
     int count;                                   //< Number of LEDs, 0 if channel is unused
     int brightness;                              //< Brightness value between 0 and 255
     unsigned char *leds;                         //< LED buffers, allocated by driver based on count
-} ws2811_channel_t;
+} pwm_dev_channel_t;
 
 typedef struct
 {
-    struct ws2811_device *device;                //< Private data for driver use
+    struct pwm_dev_device *device;                //< Private data for driver use
     uint32_t freq;                               //< Required output frequency
     int dmanum;                                  //< DMA number _not_ already in use
-    ws2811_channel_t channel[RPI_PWM_CHANNELS];
-} ws2811_t;
+    pwm_dev_channel_t channel[RPI_PWM_CHANNELS];
+} pwm_dev_t;
 
-extern ws2811_t ws2811;
-
-
-int ws2811_init(ws2811_t *ws2811);               //< Initialize buffers/hardware
-void ws2811_fini(ws2811_t *ws2811);              //< Tear it all down
-int ws2811_render(ws2811_t *ws2811);             //< Send LEDs off to hardware
-int ws2811_wait(ws2811_t *ws2811);               //< Wait for DMA completion
-void dma_start(ws2811_t *ws2811);
+extern pwm_dev_t pwm_dev;
 
 
-#endif /* __WS2811_H__ */
+int pwm_dev_init(pwm_dev_t *pwm_dev);               //< Initialize buffers/hardware
+void pwm_dev_fini(pwm_dev_t *pwm_dev);              //< Tear it all down
+int pwm_dev_render(pwm_dev_t *pwm_dev);             //< Send LEDs off to hardware
+int pwm_dev_wait(pwm_dev_t *pwm_dev);               //< Wait for DMA completion
+void dma_start(pwm_dev_t *pwm_dev);
+
+
+#endif /* __PWM_DEV_H__ */
 

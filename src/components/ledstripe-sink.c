@@ -29,7 +29,7 @@
 
 #include "ledstripe-sink.h"
 
-#include "../ws2811.h"
+#include "../pwm_dev.h"
 #include "../dma.h"
 #include "../util.h"
 #include "../log.h"
@@ -44,11 +44,11 @@
 
 enum
 {
-	LED_TYPE_LPD880x, LED_TYPE_WS280x, LED_TYPE_WS281x, NUM_LED_TYPES
+	LED_TYPE_LPD880x, LED_TYPE_WS280x, LED_TYPE_WS281x, LED_TYPE_SK6812, LED_TYPE_APA10x, NUM_LED_TYPES
 };
 
 static const char LED_TYPES[NUM_LED_TYPES][8] =
-{ "LPD880x", "WS280x", "WS281x" };
+{ "LPD880x", "WS280x", "WS281x", "SK6812", "APA10x" };
 static const char ambitv_ledstripe_spidev_mode = 0;
 static const char ambitv_ledstripe_spidev_bits = 8;
 static const char ambitv_ledstripe_spidev_lsbf = 0;
@@ -56,8 +56,8 @@ static const char ambitv_ledstripe_spidev_lsbf = 0;
 struct ambitv_ledstripe_priv
 {
 	char* dev_name;
-	int fd, dev_speed, dev_type, dev_pin, dev_inverse, num_leds, actual_num_leds, out_len, use_spi, use_8bit,
-			use_zeroend;
+	int fd, dev_speed, dev_type, dev_pin, dev_inverse, num_leds, actual_num_leds, out_len, bytes_pp, use_spi, use_8bit,
+			use_leader, use_trailer;
 	int led_len[4], *led_str[4];   // top, bottom, left, right
 	double led_inset[4];              // top, bottom, left, right
 	unsigned char* out;
@@ -152,9 +152,10 @@ static int ambitv_ledstripe_commit_outputs(struct ambitv_sink_component* compone
 	{
 		if (ledstripe->fd >= 0)
 		{
-			ret = write(ledstripe->fd, ledstripe->out, ledstripe->out_len + ledstripe->use_zeroend);
+			ret = write(ledstripe->fd, ledstripe->out,
+					ledstripe->out_len + ledstripe->use_leader + ledstripe->use_trailer);
 
-			if (ret != ledstripe->out_len + ledstripe->use_zeroend)
+			if (ret != ledstripe->out_len + +ledstripe->use_leader + ledstripe->use_trailer)
 			{
 				if (ret <= 0)
 					ret = -errno;
@@ -167,14 +168,14 @@ static int ambitv_ledstripe_commit_outputs(struct ambitv_sink_component* compone
 	}
 	else
 	{
-		volatile uint8_t *pwm_raw = ws2811.device->pwm_raw;
+		volatile uint8_t *pwm_raw = pwm_dev.device->pwm_raw;
 		int maxcount = ledstripe->num_leds;
 		int bitpos = 31;
 		int i, j, k, l, chan;
 
 		for (chan = 0; chan < RPI_PWM_CHANNELS; chan++)         // Channel
 		{
-			ws2811_channel_t *channel = &ws2811.channel[chan];
+			pwm_dev_channel_t *channel = &pwm_dev.channel[chan];
 			int wordpos = chan;
 
 			for (i = 0; i < channel->count; i++)                // Led
@@ -185,7 +186,7 @@ static int ambitv_ledstripe_commit_outputs(struct ambitv_sink_component* compone
 					{
 						uint8_t symbol = SYMBOL_LOW;
 
-						if (ledstripe->out[3 * i + j] & (1 << k))
+						if (ledstripe->out[ledstripe->bytes_pp * i + j] & (1 << k))
 						{
 							symbol = SYMBOL_HIGH;
 						}
@@ -220,40 +221,21 @@ static int ambitv_ledstripe_commit_outputs(struct ambitv_sink_component* compone
 		}
 
 		// Ensure the CPU data cache is flushed before the DMA is started.
-		__clear_cache((char *) pwm_raw, (char *) &pwm_raw[PWM_BYTE_COUNT(maxcount, ws2811.freq) + TRAILING_LEDS]);
+		__clear_cache((char *) pwm_raw, (char *) &pwm_raw[PWM_BYTE_COUNT(maxcount, pwm_dev.freq) + TRAILING_LEDS]);
 
 		// Wait for any previous DMA operation to complete.
-		if (ws2811_wait(&ws2811))
+		if (pwm_dev_wait(&pwm_dev))
 		{
 			return -1;
 		}
 
-		dma_start(&ws2811);
+		dma_start(&pwm_dev);
 	}
 
 	if (ledstripe->num_bbuf)
 		ledstripe->bbuf_idx = (ledstripe->bbuf_idx + 1) % ledstripe->num_bbuf;
 
 	return ret;
-}
-
-static void ambitv_ledstripe_clear_leds(struct ambitv_sink_component* component)
-{
-	struct ambitv_ledstripe_priv* ledstripe = (struct ambitv_ledstripe_priv*) component->priv;
-
-	if (NULL != ledstripe->out && ((!ledstripe->use_spi) || (ledstripe->fd >= 0)))
-	{
-		int i;
-		unsigned char pattern = (ledstripe->use_8bit) ? 0x00 : 0x80;
-
-		// send 3 times, in case there's noise on the line,
-		// so that all LEDs will definitely be off afterwards.
-		for (i = 0; i < 3; i++)
-		{
-			memset(ledstripe->out, pattern, ledstripe->out_len);
-			(void) ambitv_ledstripe_commit_outputs(component);
-		}
-	}
 }
 
 static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* component, int idx, int r, int g, int b)
@@ -341,33 +323,79 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 				*rgb[i] = ambitv_color_map_with_lut(ledstripe->gamma_lut[i], *rgb[i]);
 		}
 
-		bptr = ledstripe->out + (3 * ii);
-		if (ledstripe->use_8bit)
+		bptr = ledstripe->out + (ledstripe->bytes_pp * ii);
+		bptr += ledstripe->use_leader;
+
+		switch (ledstripe->dev_type)
 		{
-			if (ledstripe->dev_type == LED_TYPE_WS280x) // change order of colors for WS280x
-			{
-				*bptr++ = r;
-				*bptr++ = g;
-				*bptr = b;
-			}
-			else
-			{
-				*bptr++ = g;
-				*bptr++ = r;
-				*bptr = b;
-			}
-		}
-		else
-		{
+		case LED_TYPE_LPD880x:
 			*bptr++ = g >> 1 | 0x80;
 			*bptr++ = r >> 1 | 0x80;
 			*bptr = b >> 1 | 0x80;
-		}
+			break;
 
+		case LED_TYPE_WS280x:
+			*bptr++ = r;
+			*bptr++ = g;
+			*bptr = b;
+			break;
+
+		case LED_TYPE_WS281x:
+		case LED_TYPE_SK6812:
+			*bptr++ = g;
+			*bptr++ = r;
+			*bptr = b;
+			break;
+
+		case LED_TYPE_APA10x:
+			*bptr++ = 0xFF;
+			*bptr++ = g;
+			*bptr++ = r;
+			*bptr = b;
+			break;
+		}
 		ret = 0;
 	}
 
 	return ret;
+}
+
+static void ambitv_ledstripe_clear_leds(struct ambitv_sink_component* component)
+{
+	struct ambitv_ledstripe_priv* ledstripe = (struct ambitv_ledstripe_priv*) component->priv;
+
+	if (NULL != ledstripe->out && ((!ledstripe->use_spi) || (ledstripe->fd >= 0)))
+	{
+		int i;
+
+		switch (ledstripe->dev_type)
+		{
+		case LED_TYPE_APA10x:
+		{
+			unsigned long *outp = (unsigned long*) (ledstripe->out + ledstripe->use_leader);
+
+			for (i = 0; i < ledstripe->num_leds; i++)
+			{
+				*(outp++) = 0xE0;
+			}
+		}
+			break;
+
+		case LED_TYPE_LPD880x:
+			memset(ledstripe->out, 0x80, ledstripe->out_len);
+			break;
+
+		default:
+			memset(ledstripe->out, 0x00, ledstripe->out_len);
+			break;
+		}
+		// send 3 times, in case there's noise on the line,
+		// so that all LEDs will definitely be off afterwards.
+		for (i = 0; i < 3; i++)
+		{
+			ambitv_ledstripe_commit_outputs(component);
+		}
+	}
 }
 
 static int ambitv_ledstripe_num_outputs(struct ambitv_sink_component* component)
@@ -435,13 +463,13 @@ static int ambitv_ledstripe_start(struct ambitv_sink_component* component)
 	else
 	{
 		if (stristr(ledstripe->dev_name, "DMA") != NULL)
-			sscanf(ledstripe->dev_name + 3, "%d", &ws2811.dmanum);
-		ws2811.freq = ledstripe->dev_speed;
-		ws2811.channel[0].leds = ledstripe->out;
-		ws2811.channel[0].count = ledstripe->actual_num_leds;
-		ws2811.channel[0].gpionum = ledstripe->dev_pin;
-		ws2811.channel[0].invert = ledstripe->dev_inverse;
-		ws2811_init(&ws2811);
+			sscanf(ledstripe->dev_name + 3, "%d", &pwm_dev.dmanum);
+		pwm_dev.freq = ledstripe->dev_speed;
+		pwm_dev.channel[0].leds = ledstripe->out;
+		pwm_dev.channel[0].count = ledstripe->actual_num_leds;
+		pwm_dev.channel[0].gpionum = ledstripe->dev_pin;
+		pwm_dev.channel[0].invert = ledstripe->dev_inverse;
+		pwm_dev_init(&pwm_dev);
 	}
 	ambitv_ledstripe_clear_leds(component);
 
@@ -468,7 +496,7 @@ static int ambitv_ledstripe_stop(struct ambitv_sink_component* component)
 	}
 	else
 	{
-		ws2811_fini(&ws2811);
+		pwm_dev_fini(&pwm_dev);
 	}
 
 	return 0;
@@ -539,18 +567,46 @@ static int ambitv_ledstripe_configure(struct ambitv_sink_component* component, i
 				{
 					ledstripe->dev_type = LED_TYPE_LPD880x;
 					ledstripe->use_spi = 1;
-					ledstripe->use_zeroend = 1;
+					ledstripe->use_leader = 0;
+					ledstripe->use_trailer = 1;
+					ledstripe->use_8bit = 0;
+					ledstripe->bytes_pp = 3;
 				}
 				else if (strstr(optarg, "WS280x"))
 				{
 					ledstripe->dev_type = LED_TYPE_WS280x;
 					ledstripe->use_spi = 1;
+					ledstripe->use_leader = 0;
+					ledstripe->use_trailer = 0;
 					ledstripe->use_8bit = 1;
+					ledstripe->bytes_pp = 3;
 				}
 				else if (strstr(optarg, "WS281x"))
 				{
 					ledstripe->dev_type = LED_TYPE_WS281x;
+					ledstripe->use_spi = 0;
+					ledstripe->use_leader = 0;
+					ledstripe->use_trailer = 0;
 					ledstripe->use_8bit = 1;
+					ledstripe->bytes_pp = 3;
+				}
+				else if (strstr(optarg, "SK6812"))
+				{
+					ledstripe->dev_type = LED_TYPE_SK6812;
+					ledstripe->use_spi = 0;
+					ledstripe->use_leader = 0;
+					ledstripe->use_trailer = 0;
+					ledstripe->use_8bit = 1;
+					ledstripe->bytes_pp = 3;
+				}
+				else if (strstr(optarg, "APA10x"))
+				{
+					ledstripe->dev_type = LED_TYPE_APA10x;
+					ledstripe->use_spi = 1;
+					ledstripe->use_leader = 4;
+					ledstripe->use_trailer = 4;
+					ledstripe->use_8bit = 1;
+					ledstripe->bytes_pp = 4;
 				}
 			}
 			break;
@@ -837,7 +893,6 @@ struct ambitv_sink_component*
 ambitv_ledstripe_create(const char* name, int argc, char** argv)
 {
 	struct ambitv_sink_component* ledstripe = ambitv_sink_component_create(name);
-	unsigned char pattern;
 
 	if (NULL != ledstripe)
 	{
@@ -854,10 +909,6 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 		priv->dev_name = strdup(DEFAULT_DEV_NAME);
 		priv->dev_pin = GPIO_PIN;
 		priv->dev_inverse = 1;
-		priv->use_spi = 0;
-		priv->use_8bit = 0;
-		priv->use_zeroend = 0;
-
 		priv->brightness = DEFAULT_BRIGHTNESS;
 		priv->gamma[0] = DEFAULT_GAMMA;
 		priv->gamma[1] = DEFAULT_GAMMA;
@@ -875,8 +926,9 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 		if (ambitv_ledstripe_configure(ledstripe, argc, argv) < 0)
 			goto errReturn;
 
-		priv->out_len = sizeof(unsigned char) * 3 * priv->actual_num_leds;
-		priv->out = (unsigned char*) malloc(priv->out_len + 1);
+		priv->out_len = sizeof(unsigned char) * priv->bytes_pp * priv->actual_num_leds + priv->use_leader
+				+ priv->use_trailer;
+		priv->out = (unsigned char*) malloc(priv->out_len);
 
 		if (priv->num_bbuf > 1)
 		{
@@ -890,9 +942,28 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 		else
 			priv->num_bbuf = 0;
 
-		pattern = (((struct ambitv_ledstripe_priv*) (ledstripe->priv))->use_8bit) ? 0x00 : 0x80;
-		memset(priv->out, pattern, priv->out_len);
-		priv->out[priv->out_len] = 0x00; // latch byte
+		if (priv->use_leader)
+		{
+			switch (priv->dev_type)
+			{
+			case LED_TYPE_APA10x:
+				memset(priv->out, 0, priv->use_leader);
+				break;
+			}
+		}
+		if (priv->use_trailer)
+		{
+			switch (priv->dev_type)
+			{
+			case LED_TYPE_LPD880x:
+				*(priv->out + priv->out_len - priv->use_trailer - 1) = 0x00;
+				break;
+
+			case LED_TYPE_APA10x:
+				memset(priv->out + priv->out_len - priv->use_trailer - 1, 0xFF, priv->use_trailer);
+				break;
+			}
+		}
 
 		for (i = 0; i < 3; i++)
 		{
