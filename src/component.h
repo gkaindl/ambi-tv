@@ -87,7 +87,7 @@ void*
 ambitv_component_find_by_name(const char* name);
 
 void*
-ambitv_component_find_active_of_group(const char* name);
+ambitv_component_find_in_group(const char* name, int active);
 
 void
 ambitv_component_print_configuration(void* component);

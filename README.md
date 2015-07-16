@@ -209,7 +209,8 @@ Neu geschriebene Komponenten müssen in `registrations.c` durch Hinzufügen zu Lis
 
 ## Web-Interface
 
-Die Steuerung von ambi-tv über Webinterface funktioniert von jedem beliebigen Gerät mit Web-Client (Browser, wget, curl o.Ä.) aus. Hier eine Beschreibung der Befehle und Parameter für das Webinterface (statt "raspi" die IP des Raspi, statt "port" den beim Start in der Kommandozeile als optinalen Parameter angegebenen Port [default 16384] und statt "color" die gewünschten Farben "red", "green" oder "blue" verwenden. "n" wird durch die gewünschten Ziffern ersetzt. Die Kombination mehrerer Parameter in einem Aufruf wird noch nicht unterstützt):
+Die Steuerung von ambi-tv über Webinterface funktioniert von jedem beliebigen Gerät mit Web-Client (Browser, wget, curl o.Ä.) aus. Hier eine Beschreibung der Befehle und Parameter für das Webinterface (statt "raspi" die IP des Raspi, statt "port" den beim Start in der Kommandozeile als optinalen Parameter angegebenen Port [default 16384] und statt "color" die gewünschten Farben "red", "green" oder "blue" verwenden. "n" wird durch die gewünschten Ziffern ersetzt. Die Kombination mehrerer Parameter in einem Aufruf wird noch nicht unterstützt).
+Um einen Wert abzufragen statt ihn zu setzen ist bei dem jeweiligen Aufruf hinter dem "=" nichts einzutragen. In diesem Fall antwortet ambi-tv statt mit "OK" oder "ERR" mit dem für diesen Parameter eingestellten Wert. "http://raspi:port?brightness=" würde dann zum Beispiel bei einer eingestellten Gesamthelligkeit von 90% mit "90" beantwortet werden.
 
 *Konfigurationsdatei auslesen:*  
 `http://raspi:port?getconfig`
@@ -218,11 +219,6 @@ Aus dieser Datei kann man Anzahl, Anordnung und Namen der implementierten Progra
 
 *Modus setzen:*  
 `http://raspi:port?mode=n`
-
-Der aktuell eingestellte Modus kann auch wieder für die Verwendung in Steuerprogrammen abgefragt werden. Er wird als ASCII-Zahl beginnend bei "0" für das erste Programm zurückgeliefert.
-
-*Modus abfragen:*  
-`http://raspi:port?getmode`
 
 Welche Modusnummer welches Programm aufruft und wieviele Modi es gibt, hängt von den Einträgen in der Config-Datei ab. Alle Werte, die größer als der maximal mögliche Modus sind schalten das Ambilight aus.
 

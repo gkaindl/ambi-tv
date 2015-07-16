@@ -48,7 +48,8 @@
 #define BUTTON_MILLIS         250
 #define BUTTON_MILLIS_HYST    10
 
-static const char html_header[] = "HTTP/1.1 200 OK\nContent-type: text/html\n";
+static const char gcolors[][18] =
+{ "gamma-red=", "gamma-green=", "gamma-blue=", "intensity-red=", "intensity-green=", "intensity-blue=" };
 
 struct ambitv_main_conf
 {
@@ -156,9 +157,8 @@ static int ambitv_toggle_paused()
 
 static int ambitv_runloop()
 {
-	int ret = 0, n, done = 0;
+	int ret = -1, n;
 	unsigned char c = 0;
-	unsigned int newval;
 	fd_set fds, ex_fds;
 	struct timeval tv;
 	FILE *fh;
@@ -189,136 +189,216 @@ static int ambitv_runloop()
 
 		if ((bufferptr = strstr(buffer, "getconfig")) != NULL)
 		{
-			// set header
-			write(newsockfd, html_header, sizeof(html_header));
 			if ((fh = fopen(conf.config_path, "r")) != NULL)
 			{
 				fseek(fh, 0L, SEEK_END);
 				fsize = ftell(fh);
 				fseek(fh, 0L, SEEK_SET);
-				sprintf(buffer, "Content-length: %ld\n", fsize);
-				do
+				netif_send(newsockfd, NULL, fsize, NETIF_MODE_FIRST);
+				while (fgets(buffer, sizeof(buffer), fh))
 				{
-					write(newsockfd, buffer, strlen(buffer));
-				} while (fgets(buffer, sizeof(buffer), fh));
-				ret = 9999;
+					netif_send(newsockfd, buffer, 0, NETIF_MODE_MID);
+				}
+				ret = 2;
 				fclose(fh);
 			}
-			else
-				ret = -1;
-		}
-		else if ((bufferptr = strstr(buffer, "getmode")) != NULL)
-		{
-			// set header
-			write(newsockfd, html_header, sizeof(html_header));
-			if ((fh = fopen(conf.config_path, "r")) != NULL)
-			{
-				sprintf(buffer, "Content-length: %d\n", (conf.cur_prog > 9) ? 2 : 1);
-				write(newsockfd, buffer, strlen(buffer));
-				sprintf(buffer, "%d\n", conf.cur_prog);
-				write(newsockfd, buffer, strlen(buffer));
-				ret = 9999;
-			}
-			else
-				ret = -1;
 		}
 		else
 		{
-			scomponent = (struct ambitv_sink_component*) ambitv_component_find_by_name("led-frame");
-			if (scomponent != NULL)
+			char *valpos = strchr(buffer, '=');
+			int getval, readval = 0, done = 0;
+			double newval;
+
+			if (valpos)
 			{
-				if ((done = ((bufferptr = strstr(buffer, "mode=")) != NULL)) != 0)
+				++valpos;
+				if (*valpos > ' ')
 				{
-					bufferptr = strchr(buffer, '=') + 1;
-					newval = *bufferptr - '0';
-					if ((newval >= 0) && (newval < ambitv_num_programs))
+					readval = 1;
+					sscanf(valpos, "%lf", &newval);
+				}
+				scomponent = (struct ambitv_sink_component*) ambitv_component_find_in_group("led-", 1);
+				if (scomponent == NULL)
+					scomponent = (struct ambitv_sink_component*) ambitv_component_find_in_group("led-", 0);
+				if (scomponent != NULL)
+				{
+					if ((done = ((bufferptr = strstr(buffer, "mode=")) != NULL)) != 0)
 					{
-						ret = ambitv_program_run(ambitv_programs[newval]);
-						if (ret < 0)
-							ambitv_log(ambitv_log_error, LOGNAME "failed to start program '%s'.\n",
-									ambitv_programs[newval]->name);
+						if (readval)
+						{
+							if ((newval >= 0) && (newval < ambitv_num_programs))
+							{
+								ret = ambitv_program_run(ambitv_programs[(int) newval]);
+								if (ret < 0)
+									ambitv_log(ambitv_log_error, LOGNAME "failed to start program '%s'.\n",
+											ambitv_programs[(int) newval]->name);
+								else
+									conf.cur_prog = (int) newval;
+							}
+							else
+							{
+								ret = ambitv_program_stop_current();
+								if (ret < 0)
+									ambitv_log(ambitv_log_error, LOGNAME "failed to stop program '%s'.\n",
+											ambitv_programs[conf.cur_prog]->name);
+							}
+						}
 						else
-							conf.cur_prog = newval;
+						{
+							sprintf(buffer, "%d", conf.cur_prog);
+							ret = 1;
+						}
+					}
+					else if ((done = ((bufferptr = strstr(buffer, "brightness=")) != NULL)) != 0)
+					{
+						if (readval)
+						{
+							if (newval >= 0 && newval <= 100)
+							{
+								ret = scomponent->f_set_output_to_rgb(scomponent, ambitv_special_sinkcommand_brightness,
+										(int) newval, 0, 0);
+							}
+						}
+						else
+						{
+							getval = scomponent->f_set_output_to_rgb(scomponent, ambitv_special_sinkcommand_brightness,
+									0, 1, 0);
+							sprintf(buffer, "%d", getval);
+							ret = 1;
+						}
 					}
 					else
 					{
-						ret = ambitv_program_stop_current();
-						if (ret < 0)
-							ambitv_log(ambitv_log_error, LOGNAME "failed to stop program '%s'.\n",
-									ambitv_programs[conf.cur_prog]->name);
-					}
-				}
-				else if ((done = ((bufferptr = strstr(buffer, "brightness=")) != NULL)) != 0)
-				{
-					bufferptr = strchr(buffer, '=') + 1;
-					newval = atoi(bufferptr);
-					if (newval >= 0 && newval <= 100)
-						scomponent->f_set_output_to_rgb(scomponent, ambitv_special_sinkcommand_brightness, (int) newval,
-								0, 0);
-				}
-				else
-				{
-					static const char gcolors[][18] =
-					{ "gamma-red=", "gamma-green=", "gamma-blue=", "intensity-red=", "intensity-green=",
-							"intensity-blue=" };
-					unsigned char idx, found = 0;
+						unsigned char idx, found = 0;
 
-					for (idx = 0; idx < 6 && !found; idx++)
-					{
-						if ((done = ((bufferptr = strstr(buffer, gcolors[idx])) != NULL)) != 0)
+						for (idx = 0; idx < 6 && !found; idx++)
 						{
-							found = 1;
-							bufferptr = strchr(buffer, '=') + 1;
-							scomponent->f_set_output_to_rgb(scomponent, ambitv_special_sinkcommand_gamma_red + idx,
-									(int) (atof(bufferptr) * 100.0), 0, 0);
+							if ((done = ((bufferptr = strstr(buffer, gcolors[idx])) != NULL)) != 0)
+							{
+								found = 1;
+								if (readval)
+								{
+									if (newval >= 0 && newval <= 100)
+									{
+										ret = scomponent->f_set_output_to_rgb(scomponent,
+												ambitv_special_sinkcommand_gamma_red + idx, (int) (newval * 100.0), 0,
+												0);
+									}
+								}
+								else
+								{
+									getval = scomponent->f_set_output_to_rgb(scomponent,
+											ambitv_special_sinkcommand_gamma_red + idx, 0, 1, 0);
+									if (idx < 3)
+										sprintf(buffer, "%.02lf", (double) getval / 100.0);
+									else
+										sprintf(buffer, "%d", (int) getval);
+									ret = 1;
+								}
+							}
 						}
 					}
 				}
-			}
-			if (!done)
-			{
-				pcomponent = (struct ambitv_processor_component*) ambitv_component_find_active_of_group("audio-proc");
-				if (pcomponent != NULL)
+				if (!done)
 				{
-					if ((done = ((bufferptr = strstr(buffer, "typey=")) != NULL)) != 0)
+					pcomponent = (struct ambitv_processor_component*) ambitv_component_find_in_group("audio-proc", 1);
+					if (pcomponent == NULL)
+						pcomponent = (struct ambitv_processor_component*) ambitv_component_find_in_group("audio-proc", 0);
+					if (pcomponent != NULL)
 					{
-						bufferptr = strchr(buffer, '=') + 1;
-						newval = atoi(bufferptr);
-						if (newval >= 0 && newval <= 1000)
-							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval,
-									ambitv_special_audiocommand_type);
-					}
-					else if ((done = ((bufferptr = strstr(buffer, "sensitivity=")) != NULL)) != 0)
-					{
-						bufferptr = strchr(buffer, '=') + 1;
-						newval = atoi(bufferptr);
-						if (newval >= 0 && newval <= 1000)
-							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval,
-									ambitv_special_audiocommand_sensitivity);
-					}
-					else if ((done = ((bufferptr = strstr(buffer, "smoothing=")) != NULL)) != 0)
-					{
-						bufferptr = strchr(buffer, '=') + 1;
-						newval = atoi(bufferptr);
-						if (newval >= 0 && newval <= 1000)
-							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval,
-									ambitv_special_audiocommand_smoothing);
-					}
-					else if ((done = ((bufferptr = strstr(buffer, "linear=")) != NULL)) != 0)
-					{
-						bufferptr = strchr(buffer, '=') + 1;
-						newval = atoi(bufferptr);
-						if (newval >= 0 && newval <= 1000)
-							pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, newval,
-									ambitv_special_audiocommand_linear);
+						if ((done = ((bufferptr = strstr(buffer, "typey=")) != NULL)) != 0)
+						{
+							if (readval)
+							{
+								if (newval >= 0 && newval <= 1000)
+								{
+									ret = pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, (int) newval,
+											ambitv_special_audiocommand_type);
+								}
+							}
+							else
+							{
+								getval = pcomponent->f_consume_frame(pcomponent, NULL, 0, 1, 0,
+										ambitv_special_audiocommand_type);
+								sprintf(buffer, "%d", getval);
+								ret = 1;
+							}
+						}
+						else if ((done = ((bufferptr = strstr(buffer, "sensitivity=")) != NULL)) != 0)
+						{
+							if (readval)
+							{
+								if (newval >= 0 && newval <= 1000)
+								{
+									ret = pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, (int) newval,
+											ambitv_special_audiocommand_sensitivity);
+								}
+							}
+							else
+							{
+								getval = pcomponent->f_consume_frame(pcomponent, NULL, 0, 1, 0,
+										ambitv_special_audiocommand_sensitivity);
+								sprintf(buffer, "%d", getval);
+								ret = 1;
+							}
+						}
+						else if ((done = ((bufferptr = strstr(buffer, "smoothing=")) != NULL)) != 0)
+						{
+							if (readval)
+							{
+								if (newval >= 0 && newval <= 7)
+								{
+									ret = pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, (int) newval,
+											ambitv_special_audiocommand_smoothing);
+								}
+							}
+							else
+							{
+								getval = pcomponent->f_consume_frame(pcomponent, NULL, 0, 1, 0,
+										ambitv_special_audiocommand_smoothing);
+								sprintf(buffer, "%d", getval);
+								ret = 1;
+							}
+						}
+						else if ((done = ((bufferptr = strstr(buffer, "linear=")) != NULL)) != 0)
+						{
+							if (readval)
+							{
+								if (newval >= 0 && newval <= 1)
+								{
+									ret = pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, (int) newval,
+											ambitv_special_audiocommand_linear);
+								}
+							}
+							else
+							{
+								getval = pcomponent->f_consume_frame(pcomponent, NULL, 0, 1, 0,
+										ambitv_special_audiocommand_linear);
+								sprintf(buffer, "%d", getval);
+								ret = 1;
+							}
+						}
 					}
 				}
 			}
 		}
 		if (newsockfd > -1)
 		{
-			if (ret != 9999)
-				write(newsockfd, (ret < 0) ? "ERR\n" : "OK \n", 4);
+			switch (ret)
+			{
+			case -1:
+			case 0:
+				sprintf(buffer, "%s", (ret < 0) ? "ERR\n" : "OK \n");
+				break;
+			case 1:
+				sprintf(buffer + strlen(buffer), "\n");
+				break;
+			default:
+				*buffer = 0;
+				break;
+			}
+			if (*buffer)
+				netif_send(newsockfd, buffer, 0, NETIF_MODE_SINGLE);
 			close(newsockfd);
 		}
 

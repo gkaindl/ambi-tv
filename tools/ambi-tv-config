@@ -6,7 +6,7 @@
 # Copyright (C) 2015 by SnowHead
 
 # configure IP and socket port of RASPI here if not done by call
-[ -z "$1" ] && RASPI=192.168.0.114:16384 || RASPI="$1"
+[ -z "$1" ] && RASPI=192.168.0.117:16384 || RASPI="$1"
 
 SMOOTH_FALLOFF=1
 SMOOTH_AVERAGE=2
@@ -14,7 +14,6 @@ SMOOTH_INTEGRAL=4
 
 MENUFILE="/tmp/ambilight.mnu"
 TEMPFILE="/tmp/ambilight.tmp"
-STATFILE="/tmp/.ambistate"
 SMOOTHFILE="/tmp/.ambismooth_"
 LINEARFILE="/tmp/.ambilinear"
 
@@ -23,70 +22,66 @@ dointensity=""
 
 case "$2" in
 "asensitivity")
-	[ -e $STATFILE ] && sensitivity=`grep sensitivity $STATFILE | cut -d'=' -f2` || sensitivity=100
-	sensitivity=`input l="###" t="Empfindlichkeit" d=$sensitivity`;
+	sensitivity=`wget -q -Y off -O- http://$RASPI?sensitivity=`
+	sensitivity=`input l="###%" t="Empfindlichkeit" d=$sensitivity`;
 	if [ $sensitivity -ge 0 -a $sensitivity -le 1000 ]
 	then
 		wget -q -Y off -O /dev/null "http://$RASPI?sensitivity=$sensitivity"
-		sed -i s/"sensitivity=.*$"/"sensitivity=$sensitivity"/ $STATFILE
 	fi
 ;;
 
 "asmoothing")
 	parm=$3
-	if pval=`grep smoothing $STATFILE`
+	if pval=`wget -q -Y off -O- http://$RASPI?smoothing=`
 	then
 		smoothing=`echo $pval | cut -d'=' -f2`
 		smoothing=$(($smoothing^$parm))
 		[ $(($smoothing&$parm)) -gt 0 ] && touch $SMOOTHFILE$parm || rm -f $SMOOTHFILE$parm
-		sed -i s/"smoothing=.*$"/"smoothing=$smoothing"/ $STATFILE
 		wget -q -Y off -O /dev/null "http://$RASPI?smoothing=$smoothing"
 	fi
 ;;
 
 "alinear")
-	if pval=`grep linear $STATFILE`
+	if pval=`wget -q -Y off -O- http://$RASPI?linear=`
 	then
 		linear=`echo $pval | cut -d'=' -f2`
 		linear=$(($linear^1))
 		[ $linear -gt 0 ] && touch $LINEARFILE || rm -f $LINEARFILE
-		sed -i s/"linear=.*$"/"linear=$linear"/ $STATFILE
 		wget -q -Y off -O /dev/null "http://$RASPI?linear=$linear"
 	fi
 ;;
 
 "bright")
-	[ -e $STATFILE ] && brightness=`grep brightness $STATFILE | cut -d'=' -f2` || brightness=100
+	brightness=`wget -q -Y off -O- http://$RASPI?brightness=`
 	brightness=`input l="###%" t="Helligkeit" d=$brightness`;
 	if [ $brightness -ge 0 -a $brightness -le 100 ]
 	then
 		wget -q -Y off -O /dev/null "http://$RASPI?brightness=$brightness"
-		sed -i s/"brightness=.*$"/"brightness=$brightness"/ $STATFILE
 	fi
 ;;
 
 "ired")
-	dointensity=`expr substr $1 2 10`
+	dointensity=`expr substr $2 2 10`
 ;;
 
 "igreen")
-	dointensity=`expr substr $1 2 10`
+	dointensity=`expr substr $2 2 10`
 ;;
 
 "iblue")
-	dointensity=`expr substr $1 2 10`
+	dointensity=`expr substr $2 2 10`
 ;;
 
 "gred")
-	dogamma=`expr substr $1 2 10`
+	dogamma=`expr substr $2 2 10`
 ;;
 
 "ggreen")
-	dogamma=`expr substr $1 2 10`
+	dogamma=`expr substr $2 2 10`
 ;;
 
 "gblue")
-	dogamma=`expr substr $1 2 10`
+	dogamma=`expr substr $2 2 10`
 ;;
 
 *)
@@ -99,23 +94,7 @@ case "$2" in
 		exit 0 
 	fi
 
-	if [ ! -e $STATFILE ]
-	then
-		parpos=1
-		for param in "smoothing" "sensitivity" "linear" "brightness" "intensity-red" "intensity-green" "intensity-blue" "gamma-red" "gamma-green" "gamma-blue"
-		do
-			pval=`grep "$param" $TEMPFILE | cut -d' ' -f3 | sed -e s/'\.'//`
-			pval=`echo $pval | sed s/' .*$'//g`
-			if [ $parpos -ge 8 ]
-			then
-				pval=$pval"00"
-				pval=`expr substr $pval 1 3`
-			fi
-			echo $param=$pval >> $STATFILE
-			parpos=$(($parpos+1))
-		done
-	fi
-	if pval=`grep smoothing $STATFILE`
+	if pval=`wget -q -Y off -O- http://$RASPI?smoothing=`
 	then
 		hasaudio=3
 		smoothing=`echo $pval | cut -d'=' -f2`
@@ -161,7 +140,7 @@ case "$2" in
 	then
 		echo MENU=Audioeinstellungen >> $MENUFILE
 		echo ACTION=\&"Empfindlichkeit","$0 $RASPI asensitivity" >> $MENUFILE
-		echo MENU=Smoothing >> $MENUFILE
+		echo MENU=Filter >> $MENUFILE
 			echo DEPENDON=\&"Falloff~t~t~t~t~t~tein","$0 $RASPI asmoothing $SMOOTH_FALLOFF","$SMOOTHFILE"1 >> $MENUFILE
 			echo DEPENDOFF=\&"Falloff~t~t~t~t~t~taus","$0 $RASPI asmoothing $SMOOTH_FALLOFF","$SMOOTHFILE"1 >> $MENUFILE
 			echo DEPENDON=\&"Average~t~t~t~t~t~tein","$0 $RASPI asmoothing $SMOOTH_AVERAGE","$SMOOTHFILE"2 >> $MENUFILE
@@ -182,26 +161,22 @@ esac
 
 if [ ! -z $dogamma ]
 then
-	[ -e $STATFILE ] && gval=`grep "gamma-$dogamma" $STATFILE | cut -d'=' -f2` || gval=1.5
+	gval=`wget -q -Y off -O- http://$RASPI?gamma-"$dogamma"= | sed -e s/'\.'//`
 	gval=`input l=#.## t="Gammawert" d=$gval`;
 	if [ $gval -ge 000 -a $gval -le 999 ]
 	then
 		gfval=`expr substr $gval 1 1`.`expr substr $gval 2 2`
 		wget -q -Y off -O /dev/null "http://$RASPI?gamma-$dogamma=$gfval"
-		sed -i /"gamma-$dogamma"/d $STATFILE
-		echo "gamma-$dogamma=$gval" >> $STATFILE
 	fi
 fi
 
 if [ ! -z $dointensity ]
 then
-	[ -e $STATFILE ] && ival=`grep "intensity-$dointensity" $STATFILE | cut -d'=' -f2` || ival=100
+	ival=`wget -q -Y off -O- http://$RASPI?intensity-"$dointensity"=`
 	ival=`input l="###%" t="Intensit~at" d=$ival`;
 	if [ $ival -ge 0 -a $ival -le 100 ]
 	then
 		wget -q -Y off -O /dev/null "http://$RASPI?intensity-$dointensity=$ival"
-		sed -i /"intensity-$dointensity"/d $STATFILE
-		echo "intensity-$dointensity=$ival" >> $STATFILE
 	fi
 fi
 

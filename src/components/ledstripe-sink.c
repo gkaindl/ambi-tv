@@ -53,6 +53,9 @@ static const char ambitv_ledstripe_spidev_mode = 0;
 static const char ambitv_ledstripe_spidev_bits = 8;
 static const char ambitv_ledstripe_spidev_lsbf = 0;
 
+static const char scol[][6] =
+{ "red", "green", "blue" };
+
 struct ambitv_ledstripe_priv
 {
 	char* dev_name;
@@ -249,24 +252,34 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 		switch (idx)
 		{
 		case ambitv_special_sinkcommand_brightness:
-			ledstripe->brightness = r;
-			ambitv_log(ambitv_log_info, LOGNAME "brightness was set to %d%%", r);
+			if (g)
+				ret = ledstripe->brightness;
+			else
+			{
+				ledstripe->brightness = r;
+				ambitv_log(ambitv_log_info, LOGNAME "brightness was set to %d%%", r);
+				ret = 0;
+			}
 			break;
 
 		case ambitv_special_sinkcommand_gamma_red:
 		case ambitv_special_sinkcommand_gamma_green:
 		case ambitv_special_sinkcommand_gamma_blue:
 		{
-			static const char scol[][6] =
-			{ "red", "green", "blue" };
 			unsigned char *tptr;
 
 			idx -= ambitv_special_sinkcommand_gamma_red;
-			ledstripe->gamma[idx] = (double) r / 100.0;
-			tptr = ledstripe->gamma_lut[idx];
-			ledstripe->gamma_lut[idx] = ambitv_color_gamma_lookup_table_create(ledstripe->gamma[idx]);
-			ambitv_color_gamma_lookup_table_free(tptr);
-			ambitv_log(ambitv_log_info, LOGNAME "gamma-%s was set to %.2f", scol[idx], ledstripe->gamma[idx]);
+			if (g)
+				ret = ledstripe->gamma[idx] * 100;
+			else
+			{
+				ledstripe->gamma[idx] = (double) r / 100.0;
+				tptr = ledstripe->gamma_lut[idx];
+				ledstripe->gamma_lut[idx] = ambitv_color_gamma_lookup_table_create(ledstripe->gamma[idx]);
+				ambitv_color_gamma_lookup_table_free(tptr);
+				ambitv_log(ambitv_log_info, LOGNAME "gamma-%s was set to %.2f", scol[idx], ledstripe->gamma[idx]);
+				ret = 0;
+			}
 		}
 			break;
 
@@ -274,16 +287,20 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 		case ambitv_special_sinkcommand_intensity_green:
 		case ambitv_special_sinkcommand_intensity_blue:
 		{
-			static const char scol[][6] =
-			{ "red", "green", "blue" };
-
 			idx -= ambitv_special_sinkcommand_intensity_red;
-			ledstripe->intensity[idx] = r / 100;
-			ambitv_log(ambitv_log_info, LOGNAME "intensity-%s was set to %d%%", scol[idx], ledstripe->intensity[idx]);
+			if (g)
+				ret = ledstripe->intensity[idx];
+			else
+			{
+				ledstripe->intensity[idx] = r / 100;
+				ambitv_log(ambitv_log_info, LOGNAME "intensity-%s was set to %d%%", scol[idx],
+						ledstripe->intensity[idx]);
+				ret = 0;
+			}
 		}
 			break;
 		}
-		return 0;
+		return ret;
 	}
 
 	outp = ambitv_ledstripe_ptr_for_output(ledstripe, idx, NULL, NULL);

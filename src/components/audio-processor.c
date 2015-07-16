@@ -115,7 +115,7 @@ uint64_t GetTimeStamp(void)
 static int ambitv_audio_processor_handle_frame(struct ambitv_processor_component* component, void* frame, int samples,
 		int rate, int exval, int cmd)
 {
-	int i, o;
+	int i, o, ret = -1;
 	float temp;
 
 	struct ambitv_audio_processor_priv* audio = (struct ambitv_audio_processor_priv*) component->priv;
@@ -125,19 +125,43 @@ static int ambitv_audio_processor_handle_frame(struct ambitv_processor_component
 		switch (cmd)
 		{
 		case ambitv_special_audiocommand_type:
-			audio->type = exval;
+			if (rate)
+				ret = audio->type;
+			else
+			{
+				audio->type = exval;
+				ret = 0;
+			}
 			break;
 		case ambitv_special_audiocommand_sensitivity:
-			audio->sensitivity = exval;
+			if (rate)
+				ret = audio->sensitivity;
+			else
+			{
+				audio->sensitivity = exval;
+				ret = 0;
+			}
 			break;
 		case ambitv_special_audiocommand_smoothing:
-			audio->smoothing = exval;
+			if (rate)
+				ret = audio->smoothing;
+			else
+			{
+				audio->smoothing = exval;
+				ret = 0;
+			}
 			break;
 		case ambitv_special_audiocommand_linear:
-			audio->linear = exval;
+			if (rate)
+				ret = audio->linear;
+			else
+			{
+				audio->linear = exval;
+				ret = 0;
+			}
 			break;
 		}
-
+		return ret;
 	}
 	else
 	{

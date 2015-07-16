@@ -24,13 +24,17 @@
 #define MAX(x,y)              ((x) > (y)) ? (x) : (y)
 #define CONSTRAIN(a, l, r)    (MIN(MAX((l), (a)), (r)))
 
-int
-ambitv_util_append_ptr_to_list(void*** list_ptr, int idx, int* len_ptr,
-		void* ptr);
+#define NETIF_MODE_FIRST 	0x01
+#define NETIF_MODE_MID		0x02
+#define NETIF_MODE_LAST		0x04
+#define NETIF_MODE_SINGLE	(NETIF_MODE_FIRST | NETIF_MODE_MID | NETIF_MODE_LAST)
 
-int
-ambitv_parse_led_string(const char* str, int** out_ptr, int* out_len);
+int ambitv_util_append_ptr_to_list(void*** list_ptr, int idx, int* len_ptr, void* ptr);
+
+int ambitv_parse_led_string(const char* str, int** out_ptr, int* out_len);
 
 char *stristr(const char *String, const char *Pattern);
+
+void netif_send(int socket, char *data, int length, int mode);
 
 #endif // __AMBITV_UTIL_H__
