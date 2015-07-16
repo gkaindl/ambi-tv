@@ -152,10 +152,9 @@ static int ambitv_ledstripe_commit_outputs(struct ambitv_sink_component* compone
 	{
 		if (ledstripe->fd >= 0)
 		{
-			ret = write(ledstripe->fd, ledstripe->out,
-					ledstripe->out_len + ledstripe->use_leader + ledstripe->use_trailer);
+			ret = write(ledstripe->fd, ledstripe->out, ledstripe->out_len);
 
-			if (ret != ledstripe->out_len + +ledstripe->use_leader + ledstripe->use_trailer)
+			if (ret != ledstripe->out_len)
 			{
 				if (ret <= 0)
 					ret = -errno;
