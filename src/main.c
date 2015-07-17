@@ -402,6 +402,7 @@ static int ambitv_runloop()
 			close(newsockfd);
 		}
 
+		ret = 0;
 		goto finishLoop;
 	}
 
