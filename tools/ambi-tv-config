@@ -32,9 +32,8 @@ case "$2" in
 
 "asmoothing")
 	parm=$3
-	if pval=`wget -q -Y off -O- http://$RASPI?smoothing=`
+	if smoothing=`wget -q -Y off -O- http://$RASPI?smoothing=`
 	then
-		smoothing=`echo $pval | cut -d'=' -f2`
 		smoothing=$(($smoothing^$parm))
 		[ $(($smoothing&$parm)) -gt 0 ] && touch $SMOOTHFILE$parm || rm -f $SMOOTHFILE$parm
 		wget -q -Y off -O /dev/null "http://$RASPI?smoothing=$smoothing"
@@ -42,9 +41,8 @@ case "$2" in
 ;;
 
 "alinear")
-	if pval=`wget -q -Y off -O- http://$RASPI?linear=`
+	if linear=`wget -q -Y off -O- http://$RASPI?linear=`
 	then
-		linear=`echo $pval | cut -d'=' -f2`
 		linear=$(($linear^1))
 		[ $linear -gt 0 ] && touch $LINEARFILE || rm -f $LINEARFILE
 		wget -q -Y off -O /dev/null "http://$RASPI?linear=$linear"
@@ -94,14 +92,17 @@ case "$2" in
 		exit 0 
 	fi
 
-	if pval=`wget -q -Y off -O- http://$RASPI?smoothing=`
+	if smoothing=`wget -q -Y off -O- http://$RASPI?smoothing=`
 	then
 		hasaudio=3
-		smoothing=`echo $pval | cut -d'=' -f2`
 		for i in $SMOOTH_FALLOFF $SMOOTH_AVERAGE $SMOOTH_INTEGRAL
 		do
 			[ $(($smoothing&$i)) -gt 0 ] && touch $SMOOTHFILE$i || rm -f $SMOOTHFILE$i
 		done
+		if linear=`wget -q -Y off -O- http://$RASPI?linear=`
+		then
+			[ $linear -eq 1 ] && touch $LINEARFILE || rm -f $LINEARFILE
+		fi
 	else
 		hasaudio=0
 		smoothing=0
