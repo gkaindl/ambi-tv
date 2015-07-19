@@ -163,6 +163,7 @@ static int ambitv_runloop()
 	struct timeval tv;
 	FILE *fh;
 	unsigned long fsize;
+	bool bb = 0;
 
 	FD_ZERO(&fds);
 	FD_ZERO(&ex_fds);
@@ -187,6 +188,9 @@ static int ambitv_runloop()
 		struct ambitv_sink_component* scomponent;
 		struct ambitv_processor_component* pcomponent;
 
+		if ((bufferptr = strstr(buffer, "Connection: close")) != NULL)
+			bb = true;
+
 		if ((bufferptr = strstr(buffer, "getconfig")) != NULL)
 		{
 			if ((fh = fopen(conf.config_path, "r")) != NULL)
@@ -194,10 +198,10 @@ static int ambitv_runloop()
 				fseek(fh, 0L, SEEK_END);
 				fsize = ftell(fh);
 				fseek(fh, 0L, SEEK_SET);
-				netif_send(newsockfd, NULL, fsize, NETIF_MODE_FIRST);
+				netif_send(newsockfd, NULL, fsize, NETIF_MODE_FIRST, bb);
 				while (fgets(buffer, sizeof(buffer), fh))
 				{
-					netif_send(newsockfd, buffer, 0, NETIF_MODE_MID);
+					netif_send(newsockfd, buffer, 0, NETIF_MODE_MID, bb);
 				}
 				ret = 2;
 				fclose(fh);
@@ -391,14 +395,14 @@ static int ambitv_runloop()
 				sprintf(buffer, "%s", (ret < 0) ? "ERR\n" : "OK \n");
 				break;
 			case 1:
-				sprintf(buffer + strlen(buffer), "\n");
+				sprintf(buffer + strlen(buffer), "\r\n");
 				break;
 			default:
 				*buffer = 0;
 				break;
 			}
 			if (*buffer)
-				netif_send(newsockfd, buffer, 0, NETIF_MODE_SINGLE);
+				netif_send(newsockfd, buffer, 0, NETIF_MODE_SINGLE, bb);
 			close(newsockfd);
 		}
 

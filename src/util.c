@@ -30,7 +30,7 @@
 
 #define LIST_GROW_STEP     4
 
-static const char html_header[] = "HTTP/1.1 200 OK\nContent-type: text/html\n";
+static const char html_header[] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n";
 
 int ambitv_util_append_ptr_to_list(void*** list_ptr, int idx, int* len_ptr, void* ptr)
 {
@@ -177,7 +177,7 @@ char *stristr(const char *String, const char *Pattern)
 	return 0;
 }
 
-void netif_send(int socket, char *data, int length, int mode)
+void netif_send(int socket, char *data, int length, int mode, bool bb)
 {
 	if (socket >= 0)
 	{
@@ -186,7 +186,8 @@ void netif_send(int socket, char *data, int length, int mode)
 			char tbuf[128];
 
 			write(socket, html_header, sizeof(html_header));
-			sprintf(tbuf, "Content-length: %ld\n", (unsigned long) ((length) ? length : strlen(data)));
+			sprintf(tbuf, "Content-Length: %ld\r\n%s", (unsigned long) ((length) ? length : strlen(data)),
+					(bb) ? "" : "\r\n");
 			write(socket, tbuf, strlen(tbuf));
 		}
 		if (mode & NETIF_MODE_MID)

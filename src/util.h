@@ -29,12 +29,14 @@
 #define NETIF_MODE_LAST		0x04
 #define NETIF_MODE_SINGLE	(NETIF_MODE_FIRST | NETIF_MODE_MID | NETIF_MODE_LAST)
 
+typedef enum { false, true } bool;
+
 int ambitv_util_append_ptr_to_list(void*** list_ptr, int idx, int* len_ptr, void* ptr);
 
 int ambitv_parse_led_string(const char* str, int** out_ptr, int* out_len);
 
 char *stristr(const char *String, const char *Pattern);
 
-void netif_send(int socket, char *data, int length, int mode);
+void netif_send(int socket, char *data, int length, int mode, bool bb);
 
 #endif // __AMBITV_UTIL_H__
