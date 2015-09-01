@@ -30,7 +30,7 @@ Neben dem Grundgerüst von Georg Kaindl wurde auch auf die Vorabeiten von [Karl S
 Für den Aufbau des eigenständigen Ambilights werden folgende Komponenten benötigt:
 
 - Raspberry Pi (Version A, B oder B+ mit aktuellem [Raspbian-Image](http://downloads.raspberrypi.org/raspbian_latest)) mit [Kühlkörpern](http://www.amazon.de/gp/product/B00BB8ZB4U)
-- [HDMI-Splitter](http://www.amazon.de/gp/product/B0081FDFMQ): Dieser Splitter unterstützt auch BD-3D, CEC und ARC.
+- [HDMI-Splitter](http://www.amazon.de/gp/product/B0081FDFMQ): Dieser Splitter unterstützt auch BD-3D und CEC.
 - [HDMI / Composite Umsetzer](http://www.amazon.de/gp/product/B00AASZU8E): erzeugt auch das Audio-Signal für den Spektrum-Analyzer.
 - [LPD8806 RGB LED Strip](http://www.watterott.com/de/Digital-Addressable-RGB-LED): Die benötigte Länge hängt von der Bildschirmdiagonale ab.
 - alternativ [WS2811 RGB LED Strip](http://www.ebay.de/itm/WS2812B-LED-Stripe-4m-RGB-60-LEDs-m-Klebestreifen-WS2811-WS2812-/251901768682?pt=LH_DefaultDomain_77&hash=item3aa683f3ea): Vorteile: höhere LED-Dichte, günstigerer Preis, kein Chip sichtbar (nur die LED sind zu sehen) Nachteil: man benötigt einen Pegelwandler von den 3,3V des Raspi auf die 5V der LED. 
