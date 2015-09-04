@@ -2,7 +2,7 @@
 
 Eine Weiterentwicklung von gkaindl's Framework für ein Ambilight mit einem Embedded-Linux-System (z.B. Raspberry), einem USB-Framegrabber und adressierbaren RGB-LED-Stripes
 
-Das [Original-Demo-Video](http://www.youtube.com/watch?v=8cpQpGYtjR0) stammt von gkaindl. Ein Beispiel für die zusätzliche Audio-Funktion findet Ihr [hier](http://www.youtube.com/watch?v=E6IvAzZ8_ws).
+Hier ist eine [Video-Demonstration](https://www.youtube.com/watch?v=gjBJl8lVzbc) des Standard-Modus. Ein Beispiel für die zusätzliche Audio-Funktion findet Ihr [hier](http://www.youtube.com/watch?v=E6IvAzZ8_ws).
 
 ambi-tv basiert auf der Idee, einen HDMI-Splitter und einen HDMI-zu-CVBS-Umsetzer für das parallele Erfassen des angezeigten Bildes und dessen Darstellung auf einem LED-Strip zu verwenden. Das funktioniert mit jeder HDMI-Quelle ohne die Notwendigkeit, einen zusätzlichen Computer zu verwenden. 
 
@@ -36,7 +36,7 @@ Für den Aufbau des eigenständigen Ambilights werden folgende Komponenten benötig
 - alternativ [WS2811 RGB LED Strip](http://www.ebay.de/itm/WS2812B-LED-Stripe-4m-RGB-60-LEDs-m-Klebestreifen-WS2811-WS2812-/251901768682?pt=LH_DefaultDomain_77&hash=item3aa683f3ea): Vorteile: höhere LED-Dichte, günstigerer Preis, kein Chip sichtbar (nur die LED sind zu sehen) Nachteil: man benötigt einen Pegelwandler von den 3,3V des Raspi auf die 5V der LED. 
 - [USB-Video-Grabber](https://www.amazon.de/gp/product/B0013BXFLG): Muß einen Fushicai-Chipsatz besitzen, damit der usbtv-Treiber funktioniert.
 - [5V-Netzteile](http://www.amazon.de/gp/product/B004S7U4IO): Für eine höhere LED-Zahl sollten es mindestens 3 Stück sein. Eins für den Raspberry und das Zubehör (die können über einen solchen [Hub](http://www.amazon.de/gp/product/B00UBROY0Y) mit dem Netzteil verbunden werden) und zwei für die LED-Stripes (an beiden Enden einspeisen)
-- optional [PCM/Analog-Wandler](https://www.amazon.de/gp/product/B00LLWBAQE): um den Digital-Ausgangs eines DTS-Decoders als Audioquelle nutzen zu können
+- optional [PCM/Analog-Wandler](http://www.amazon.de/gp/product/B004B662AG): um den Digital-Ausgangs eines DTS-Decoders als Audioquelle nutzen zu können
 - optional [Dreikantleisten](http://www.cmc-versand.de/Aeronaut/Balsa-Dreikant-15x15-mm-arnr-48-754315.html): mit ihrer Hilfe strahlen die LED an einer senkrechten Fernseher-Rückwand nich direkt nach hinten an die Wand sondern in einem Winkel von 45° nach außen. Dadurch geht nicht so viel Licht verloren. Die Befestigung kann mit solchem dünnen [Klebeband](http://www.dx.com/p/m001-8mm-x-50m-double-sided-tape-black-258686) erfolgen.
 - Tipp-Taster: Für diejenigen, die die Umschaltung nicht über das Web-Interface vornehmen.
 - diverse Kabel, Lötwerkzeug
