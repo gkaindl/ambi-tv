@@ -25,6 +25,7 @@
 #include "log.h"
 
 #define LOGNAME      "video-fmt: "
+#define CROP_LIMIT	5
 
 const char* v4l2_string_from_fourcc(uint32_t fourcc)
 {
@@ -154,9 +155,9 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 			ss[i] = (sy * ((i + 16) % 32));
 
 		// left
-		tcnt = 0;
 		for (i = 0; i < w / 8; i += 4)
 		{
+			tcnt = 0;
 			for (j = 0; j < 32; j++)
 			{
 				unsigned char* pix = &(((unsigned char*) pixbuf)[i
@@ -164,7 +165,7 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 				if (luminance_threshold < pix[0]
 						&& luminance_threshold < pix[2])
 				{
-					if(++tcnt > 5)
+					if(++tcnt > CROP_LIMIT)
 					{
 						crop[3] = i >> 1;
 						goto left_done;
@@ -176,9 +177,9 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 		left_done:
 
 		// right
-		tcnt = 0;
 		for (i = w * 2; i > 2 * w - w / 8; i -= 4)
 		{
+			tcnt = 0;
 			for (j = 0; j < 32; j++)
 			{
 				unsigned char* pix = &(((unsigned char*) pixbuf)[i
@@ -186,7 +187,7 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 				if (luminance_threshold < pix[0]
 						&& luminance_threshold < pix[2])
 				{
-					if(++tcnt > 5)
+					if(++tcnt > CROP_LIMIT)
 					{
 						crop[1] = (w * 2 - i) >> 1;
 						goto right_done;
@@ -197,24 +198,18 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 
 		right_done:
 
-		/*
-		 for (i=0; i<32; i++)
-		 ss[i] = (sx * ((i+16) % 32));
-		 */
 		// top
-		tcnt = 0;
 		for (i = 0; i < h / 5; i++)
 		{
-//         for (j=0; j<32; j++) {
+			tcnt = 0;
 			for (j = 8; j < 24; j++)
 			{
-//            unsigned char* pix = &(((unsigned char*)pixbuf)[ss[j] + i*bytesperline]);
 				unsigned char* pix = &(((unsigned char*) pixbuf)[sx * j
 						+ i * bytesperline]);
 				if (luminance_threshold < pix[0]
 						&& luminance_threshold < pix[2])
 				{
-					if(++tcnt > 5)
+					if(++tcnt > CROP_LIMIT)
 					{
 						crop[0] = i;
 						goto top_done;
@@ -226,9 +221,9 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 		top_done:
 
 		// bottom
-		tcnt = 0;
 		for (i = h; i > h - h / 5; i--)
 		{
+			tcnt = 0;
 			for (j = 0; j < 32; j++)
 			{
 				unsigned char* pix = &(((unsigned char*) pixbuf)[ss[j]
@@ -236,7 +231,7 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 				if (luminance_threshold < pix[0]
 						&& luminance_threshold < pix[2])
 				{
-					if(++tcnt > 5)
+					if(++tcnt > CROP_LIMIT)
 					{
 						crop[2] = h - i;
 						goto bottom_done;

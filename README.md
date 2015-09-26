@@ -4,7 +4,7 @@ Eine Weiterentwicklung von gkaindl's Framework für ein Ambilight mit einem Embed
 
 Hier ist eine [Video-Demonstration](https://www.youtube.com/watch?v=gjBJl8lVzbc) des Standard-Modus. Ein Beispiel für die zusätzliche Audio-Funktion findet Ihr [hier](http://www.youtube.com/watch?v=E6IvAzZ8_ws).
 
-ambi-tv basiert auf der Idee, einen HDMI-Splitter und einen HDMI-zu-CVBS-Umsetzer für das parallele Erfassen des angezeigten Bildes und dessen Darstellung auf einem LED-Strip zu verwenden. Das funktioniert mit jeder HDMI-Quelle ohne die Notwendigkeit, einen zusätzlichen Computer zu verwenden. 
+ambi-tv basiert auf der Idee, einen HDMI-Splitter und einen HDMI-zu-CVBS-Umsetzer für das parallele Erfassen des angezeigten Bildes und dessen Darstellung auf einem LED-Stripe zu verwenden. Das funktioniert mit jeder HDMI-Quelle ohne die Notwendigkeit, einen zusätzlichen Computer zu verwenden. 
 
 Die Software ist für eine möglichst einfache Erweiterung und Anpassung ausgelegt.
 
