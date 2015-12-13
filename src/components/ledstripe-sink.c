@@ -49,6 +49,13 @@ enum
 
 static const char LED_TYPES[NUM_LED_TYPES][8] =
 { "LPD880x", "WS280x", "WS281x", "SK6812", "APA10x" };
+static const char LED_COLPOS[NUM_LED_TYPES][3] =
+{
+{ 1, 0, 2 }, 	// GRB for LPD880x
+{ 0, 1, 2 }, 	// RGB for WS280x
+{ 0, 1, 2 }, 	// RGB for WS281x
+{ 1, 0, 2 }, 	// GRB for SK6812
+{ 0, 1, 2 } };	// RGB for APA10x
 static const char ambitv_ledstripe_spidev_mode = 0;
 static const char ambitv_ledstripe_spidev_bits = 8;
 static const char ambitv_ledstripe_spidev_lsbf = 0;
@@ -67,6 +74,7 @@ struct ambitv_ledstripe_priv
 	unsigned char** bbuf;
 	int num_bbuf, bbuf_idx;
 	int brightness, intensity[3];
+	char colpos[3];		// offsets for colors in output-stream
 	double gamma[3];      // RGB gamma, not GRB!
 	unsigned char* gamma_lut[3];  // also RGB
 };
@@ -313,21 +321,21 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 		{
 			unsigned char* acc = ledstripe->bbuf[ledstripe->bbuf_idx];
 
-			acc[3 * ii] = g;
-			acc[3 * ii + 1] = r;
+			acc[3 * ii] = r;
+			acc[3 * ii + 1] = g;
 			acc[3 * ii + 2] = b;
 
 			r = g = b = 0;
 
 			for (i = 0; i < ledstripe->num_bbuf; i++)
 			{
-				g += ledstripe->bbuf[i][3 * ii];
-				r += ledstripe->bbuf[i][3 * ii + 1];
+				r += ledstripe->bbuf[i][3 * ii];
+				g += ledstripe->bbuf[i][3 * ii + 1];
 				b += ledstripe->bbuf[i][3 * ii + 2];
 			}
 
-			g /= ledstripe->num_bbuf;
 			r /= ledstripe->num_bbuf;
+			g /= ledstripe->num_bbuf;
 			b /= ledstripe->num_bbuf;
 		}
 
@@ -345,31 +353,20 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 		switch (ledstripe->dev_type)
 		{
 		case LED_TYPE_LPD880x:
-			*bptr++ = g >> 1 | 0x80;
-			*bptr++ = r >> 1 | 0x80;
-			*bptr = b >> 1 | 0x80;
-			break;
-
-		case LED_TYPE_WS280x:
-			*bptr++ = r;
-			*bptr++ = g;
-			*bptr = b;
-			break;
-
-		case LED_TYPE_WS281x:
-		case LED_TYPE_SK6812:
-			*bptr++ = g;
-			*bptr++ = r;
-			*bptr = b;
+			r = r >> 1 | 0x80;
+			g = g >> 1 | 0x80;
+			b = b >> 1 | 0x80;
 			break;
 
 		case LED_TYPE_APA10x:
 			*bptr++ = 0xFF;
-			*bptr++ = g;
-			*bptr++ = r;
-			*bptr = b;
 			break;
 		}
+
+		*(bptr + ledstripe->colpos[0]) = r;
+		*(bptr + ledstripe->colpos[1]) = g;
+		*(bptr + ledstripe->colpos[2]) = b;
+		bptr += 3;
 		ret = 0;
 	}
 
@@ -536,6 +533,7 @@ static int ambitv_ledstripe_configure(struct ambitv_sink_component* component, i
 	{ "dev-type", required_argument, 0, 't' },
 	{ "dev-pin", required_argument, 0, 'p' },
 	{ "dev-inverse", required_argument, 0, 'i' },
+	{ "dev-color-order", required_argument, 0, 'c' },
 	{ "leds-top", required_argument, 0, '0' },
 	{ "leds-bottom", required_argument, 0, '1' },
 	{ "leds-left", required_argument, 0, '2' },
@@ -686,6 +684,48 @@ static int ambitv_ledstripe_configure(struct ambitv_sink_component* component, i
 					ledstripe->dev_inverse = (int) nbuf;
 				}
 				else
+				{
+					ambitv_log(ambitv_log_error,
+					LOGNAME "invalid argument for '%s': '%s'.\n", argv[optind - 2], optarg);
+					ret = -1;
+					goto errReturn;
+				}
+			}
+
+			break;
+		}
+
+		case 'c':
+		{
+			if (NULL != optarg)
+			{
+				int i, allfound = 0;
+
+				for (i = 0; i < 3; i++)
+				{
+					switch (*(optarg + i))
+					{
+					case 'R':
+					case 'r':
+						ledstripe->colpos[i] = 0;
+						allfound |= 1;
+						break;
+
+					case 'G':
+					case 'g':
+						ledstripe->colpos[i] = 1;
+						allfound |= 2;
+						break;
+
+					case 'B':
+					case 'b':
+						ledstripe->colpos[i] = 2;
+						allfound |= 4;
+						break;
+					}
+				}
+
+				if (allfound != 7)
 				{
 					ambitv_log(ambitv_log_error,
 					LOGNAME "invalid argument for '%s': '%s'.\n", argv[optind - 2], optarg);
@@ -930,6 +970,8 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 		priv->gamma[1] = DEFAULT_GAMMA;
 		priv->gamma[2] = DEFAULT_GAMMA;
 
+		memset(priv->colpos, 3, 3);
+
 		ledstripe->f_print_configuration = ambitv_ledstripe_print_configuration;
 		ledstripe->f_start_sink = ambitv_ledstripe_start;
 		ledstripe->f_stop_sink = ambitv_ledstripe_stop;
@@ -941,6 +983,9 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 
 		if (ambitv_ledstripe_configure(ledstripe, argc, argv) < 0)
 			goto errReturn;
+
+		if ((priv->colpos[0] == 3) || (priv->colpos[1] == 3) || (priv->colpos[2] == 3))
+			memcpy(priv->colpos, LED_COLPOS[priv->dev_type], 3);
 
 		priv->out_len = sizeof(unsigned char) * priv->bytes_pp * priv->actual_num_leds + priv->use_leader
 				+ priv->use_trailer;
