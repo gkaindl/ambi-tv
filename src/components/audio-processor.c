@@ -46,12 +46,12 @@ enum
 #define DEFAULT_SENSITIVITY 	500
 #define DEFAULT_SMOOTHING		(SMOOTH_FALLOFF | SMOOTH_AVERAGE | SMOOTH_INTEGRAL)
 #define DEFAULT_TYPE			1
-#define BANDS					36
-#define BANDOFFS				1
+#define BANDS					40
+#define BANDOFFS				3
 #define MAXBANDS				(BANDS + 2*BANDOFFS)
 #define MAXVAL					255
 #define MSIZE					1024
-#define COLORS					9
+#define COLORS					10
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
        __typeof__ (b) _b = (b); \
@@ -66,9 +66,9 @@ typedef struct
 
 static const COLSTRUCT colors =
 {
-{ 0xFF, 0xFF, 0xAF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x7F, 0x00 },
-{ 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x7F, 0x00 },
-{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x7F, 0x00 } };
+{ 0xFF, 0xFF, 0xAF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x7F, 0xFF, 0x00 },
+{ 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x7F, 0xFF, 0x00 },
+{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00 } };
 
 float fc[MAXBANDS + 1];
 float fr[MAXBANDS + 1];
@@ -115,7 +115,7 @@ uint64_t GetTimeStamp(void)
 static int ambitv_audio_processor_handle_frame(struct ambitv_processor_component* component, void* frame, int samples,
 		int rate, int exval, int cmd)
 {
-	int i, o, ret = -1;
+	int i, j, o, ret = -1;
 	float temp;
 
 	struct ambitv_audio_processor_priv* audio = (struct ambitv_audio_processor_priv*) component->priv;
@@ -200,7 +200,10 @@ static int ambitv_audio_processor_handle_frame(struct ambitv_processor_component
 			if (temp > rate * 8)
 				temp = rate * 8; //just in case
 			f[o] = temp;
-
+			for(j = 0; j < BANDOFFS; j++)
+				peak[BANDOFFS] += peak[j];
+			for(j = 0; j < BANDOFFS + 2; j++)
+				peak[j] = peak[BANDOFFS];
 		}
 		// process [smoothing]
 		if (audio->smoothing & SMOOTH_FALLOFF)
