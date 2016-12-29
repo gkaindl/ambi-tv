@@ -30,6 +30,8 @@
 
 #define LIST_GROW_STEP     4
 
+int fdebug = 0;
+
 static const char html_header[] = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n";
 
 int ambitv_util_append_ptr_to_list(void*** list_ptr, int idx, int* len_ptr, void* ptr)

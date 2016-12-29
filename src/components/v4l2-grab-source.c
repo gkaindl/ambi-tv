@@ -396,7 +396,6 @@ static int ambitv_v4l2_grab_read_frame(struct v4l2_grab* grabber)
 
 	ambitv_source_component_distribute_to_active_processors(grabber->source_component, eframe, ewidth, eheight, ebpl,
 			grabber->fmt);
-
 	ret = xioctl(grabber->fd, VIDIOC_QBUF, &buf);
 	if (ret < 0)
 	{

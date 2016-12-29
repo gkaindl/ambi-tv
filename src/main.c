@@ -48,8 +48,8 @@
 #define BUTTON_MILLIS         250
 #define BUTTON_MILLIS_HYST    10
 
-static const char gcolors[][18] =
-{ "gamma-red=", "gamma-green=", "gamma-blue=", "intensity-red=", "intensity-green=", "intensity-blue=" };
+static const char gcolors[][22] =
+{ "gamma-red=", "gamma-green=", "gamma-blue=", "intensity-red=", "intensity-green=", "intensity-blue=", "intensity-min-red=", "intensity-min-green=", "intensity-min-blue=" };
 
 struct ambitv_main_conf
 {
@@ -64,7 +64,7 @@ struct ambitv_main_conf
 	volatile int running;
 };
 
-static struct ambitv_main_conf conf;
+struct ambitv_main_conf conf;
 const char flagfile[] = "/tmp/.ambi-tv.mode";
 int sockfd = -1, newsockfd = -1;
 socklen_t clilen;
@@ -275,7 +275,7 @@ static int ambitv_runloop()
 					{
 						unsigned char idx, found = 0;
 
-						for (idx = 0; idx < 6 && !found; idx++)
+						for (idx = 0; idx < 9 && !found; idx++)
 						{
 							if ((done = ((bufferptr = strstr(buffer, gcolors[idx])) != NULL)) != 0)
 							{
@@ -554,6 +554,7 @@ static void ambitv_usage(const char* name)
 					"\t-h,--help                display this help text.\n"
 					"\t-p,--program [i]         run the [i]-th program from the configuration file on start-up.\n"
 					"\t-s,--socketport [i]      set the socket port to communicate with %s\n"
+					"\t-d,--debug				activate debug output\n"
 					"\n", p, DEFAULT_CONFIG_PATH, p);
 }
 
@@ -568,10 +569,11 @@ static int ambitv_main_configure(int argc, char** argv)
 	{ "help", no_argument, 0, 'h' },
 	{ "program", required_argument, 0, 'p' },
 	{ "socketport", required_argument, 0, 's' },
+	{ "debug", no_argument, 0, 'd' },
 	{ NULL, 0, 0, 0 } };
 	while (1)
 	{
-		c = getopt_long(argc, argv, "b:f:hp:", lopts, NULL);
+		c = getopt_long(argc, argv, "b:f:hp:s:d", lopts, NULL);
 
 		if (c < 0)
 			break;
@@ -595,6 +597,10 @@ static int ambitv_main_configure(int argc, char** argv)
 			}
 			break;
 		}
+
+		case 'd':
+			fdebug = 1;
+			break;
 
 		case 'b':
 		case 'p':

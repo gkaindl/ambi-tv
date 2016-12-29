@@ -70,6 +70,18 @@ case "$2" in
 	dointensity=`expr substr $2 2 10`
 ;;
 
+"imred")
+	dointensity_min=`expr substr $2 2 10`
+;;
+
+"imgreen")
+	dointensity_min=`expr substr $2 2 10`
+;;
+
+"imblue")
+	dointensity_min=`expr substr $2 2 10`
+;;
+
 "gred")
 	dogamma=`expr substr $2 2 10`
 ;;
@@ -110,7 +122,7 @@ case "$2" in
 
 	echo WIDTH=440 > $MENUFILE
 	echo HIGHT=500 >> $MENUFILE
-	echo LINESPP=$((11+$hasaudio)) >> $MENUFILE
+	echo LINESPP=$((12+$hasaudio)) >> $MENUFILE
 	echo FONTSIZE=24 >> $MENUFILE
 	echo MENU=Ambilight-Steuerung >> $MENUFILE
 	echo COMMENT=!Ambilight-Modus >> $MENUFILE
@@ -132,6 +144,10 @@ case "$2" in
 	echo ACTION=\&"Intensit~at Rot","$0 $RASPI ired" >> $MENUFILE
 	echo ACTION=\&"Intensit~at Gr~un","$0 $RASPI igreen" >> $MENUFILE
 	echo ACTION=\&"Intensit~at Blau","$0 $RASPI iblue" >> $MENUFILE
+	echo COMMENT=! >> $MENUFILE
+	echo ACTION=\&"Minimalintensit~at Rot","$0 $RASPI imred" >> $MENUFILE
+	echo ACTION=\&"Minimalintensit~at Gr~un","$0 $RASPI imgreen" >> $MENUFILE
+	echo ACTION=\&"Minimalintensit~at Blau","$0 $RASPI imblue" >> $MENUFILE
 	echo COMMENT=! >> $MENUFILE
 	echo ACTION=\&"Gammawert Rot","$0 $RASPI gred" >> $MENUFILE
 	echo ACTION=\&"Gammawert Gr~un","$0 $RASPI ggreen" >> $MENUFILE
@@ -178,6 +194,16 @@ then
 	if [ $ival -ge 0 -a $ival -le 100 ]
 	then
 		wget -q -Y off -O /dev/null "http://$RASPI?intensity-$dointensity=$ival"
+	fi
+fi
+
+if [ ! -z $dointensity_min ]
+then
+	ival=`wget -q -Y off -O- http://$RASPI?intensity-min-"$dointensity"=`
+	ival=`input l="###%" t="Minimalintensit~at" d=$ival`;
+	if [ $ival -ge 0 -a $ival -le 100 ]
+	then
+		wget -q -Y off -O /dev/null "http://$RASPI?intensity-min-$dointensity=$ival"
 	fi
 fi
 

@@ -31,6 +31,8 @@
 
 typedef enum { false, true } bool;
 
+extern int fdebug;
+
 int ambitv_util_append_ptr_to_list(void*** list_ptr, int idx, int* len_ptr, void* ptr);
 
 int ambitv_parse_led_string(const char* str, int** out_ptr, int* out_len);

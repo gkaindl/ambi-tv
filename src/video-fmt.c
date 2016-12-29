@@ -19,10 +19,13 @@
 
 #include <stdio.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <linux/videodev2.h>
 
 #include "video-fmt.h"
 #include "log.h"
+#include "util.h"
 
 #define LOGNAME      "video-fmt: "
 #define CROP_LIMIT	5
@@ -86,7 +89,7 @@ static int avg_rgb_for_block_yuyv(unsigned char* rgb, const void* pixbuf, int x,
 {
 	int i, j, k, v, y1, u, y2, cnt = 0;
 
-	long avg_rgb[3] =
+	unsigned long avg_rgb[3] =
 	{ 0, 0, 0 };
 	unsigned char irgb[6];
 

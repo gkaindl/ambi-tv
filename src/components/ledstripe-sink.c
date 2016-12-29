@@ -73,7 +73,7 @@ struct ambitv_ledstripe_priv
 	unsigned char* out;
 	unsigned char** bbuf;
 	int num_bbuf, bbuf_idx;
-	int brightness, intensity[3];
+	int brightness, intensity[3], intensity_min[3];
 	char colpos[3];		// offsets for colors in output-stream
 	double gamma[3];      // RGB gamma, not GRB!
 	unsigned char* gamma_lut[3];  // also RGB
@@ -181,6 +181,7 @@ static int ambitv_ledstripe_commit_outputs(struct ambitv_sink_component* compone
 		volatile uint8_t *pwm_raw = pwm_dev.device->pwm_raw;
 		int maxcount = ledstripe->num_leds;
 		int bitpos = 31;
+		int bytepos;
 		int i, j, k, l, chan;
 
 		for (chan = 0; chan < RPI_PWM_CHANNELS; chan++)         // Channel
@@ -192,11 +193,12 @@ static int ambitv_ledstripe_commit_outputs(struct ambitv_sink_component* compone
 			{
 				for (j = 0; j < 3; j++)        // Color
 				{
+					bytepos = ledstripe->bytes_pp * i + j;
 					for (k = 7; k >= 0; k--)                   // Bit
 					{
 						uint8_t symbol = SYMBOL_LOW;
 
-						if (ledstripe->out[ledstripe->bytes_pp * i + j] & (1 << k))
+						if (ledstripe->out[bytepos] & (1 << k))
 						{
 							symbol = SYMBOL_HIGH;
 						}
@@ -307,7 +309,24 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 			}
 		}
 			break;
+
+		case ambitv_special_sinkcommand_min_intensity_red:
+		case ambitv_special_sinkcommand_min_intensity_green:
+		case ambitv_special_sinkcommand_min_intensity_blue:
+		{
+			idx -= ambitv_special_sinkcommand_min_intensity_red;
+			if (g)
+				ret = ledstripe->intensity_min[idx];
+			else
+			{
+				ledstripe->intensity_min[idx] = r / 100;
+				ambitv_log(ambitv_log_info, LOGNAME "intensity-min-%s was set to %d%%", scol[idx],
+						ledstripe->intensity_min[idx]);
+				ret = 0;
+			}
 		}
+			break;
+}
 		return ret;
 	}
 
@@ -349,6 +368,10 @@ static int ambitv_ledstripe_set_output_to_rgb(struct ambitv_sink_component* comp
 
 		bptr = ledstripe->out + (ledstripe->bytes_pp * ii);
 		bptr += ledstripe->use_leader;
+
+		if(r < ledstripe->intensity_min[0]*2.55) r = ledstripe->intensity_min[0]*2.55;
+		if(g < ledstripe->intensity_min[1]*2.55) g = ledstripe->intensity_min[1]*2.55;
+		if(b < ledstripe->intensity_min[2]*2.55) b = ledstripe->intensity_min[2]*2.55;
 
 		switch (ledstripe->dev_type)
 		{
@@ -546,6 +569,9 @@ static int ambitv_ledstripe_configure(struct ambitv_sink_component* component, i
 	{ "intensity-red", required_argument, 0, '7' },
 	{ "intensity-green", required_argument, 0, '8' },
 	{ "intensity-blue", required_argument, 0, '9' },
+	{ "intensity-min-red", required_argument, 0, 'A' },
+	{ "intensity-min-green", required_argument, 0, 'B' },
+	{ "intensity-min-blue", required_argument, 0, 'C' },
 	{ "led-inset-top", required_argument, 0, 'w' },
 	{ "led-inset-bottom", required_argument, 0, 'x' },
 	{ "led-inset-left", required_argument, 0, 'y' },
@@ -856,6 +882,31 @@ static int ambitv_ledstripe_configure(struct ambitv_sink_component* component, i
 			break;
 		}
 
+		case 'A':
+		case 'B':
+		case 'C':
+		{
+			if (NULL != optarg)
+			{
+				char* eptr = NULL;
+				int nbuf = (int) strtol(optarg, &eptr, 10);
+
+				if ('\0' == *eptr)
+				{
+					ledstripe->intensity_min[c - 'A'] = nbuf;
+				}
+				else
+				{
+					ambitv_log(ambitv_log_error,
+					LOGNAME "invalid argument for '%s': '%s'.\n", argv[optind - 2], optarg);
+					ret = -1;
+					goto errReturn;
+				}
+			}
+
+			break;
+		}
+
 		case 'w':
 		case 'x':
 		case 'y':
@@ -900,19 +951,21 @@ static void ambitv_ledstripe_print_configuration(struct ambitv_sink_component* c
 {
 	struct ambitv_ledstripe_priv* ledstripe = (struct ambitv_ledstripe_priv*) component->priv;
 
-	ambitv_log(ambitv_log_info, "\tdevice name:       %s\n"
-			"\tdev hz:            %d\n"
-			"\tdev type:	      %s\n"
-			"\tnumber of leds:    %d\n"
-			"\tblending frames:   %d\n"
-			"\tled insets (tblr): %.1f%%, %.1f%%, %.1f%%, %.1f%%\n"
-			"\tbrightness:        %d%%\n"
-			"\tintensity (rgb):   %d%%, %d%%, %d%%\n"
-			"\tgamma (rgb):       %.2f, %.2f, %.2f\n", ledstripe->dev_name, ledstripe->dev_speed,
+	ambitv_log(ambitv_log_info, "\tdevice name:         %s\n"
+			"\tdev hz:              %d\n"
+			"\tdev type:	     %s\n"
+			"\tnumber of leds:      %d\n"
+			"\tblending frames:     %d\n"
+			"\tled insets (tblr):   %.1f%%, %.1f%%, %.1f%%, %.1f%%\n"
+			"\tbrightness:          %d%%\n"
+			"\tintensity (rgb):     %d%%, %d%%, %d%%\n"
+			"\tintensity-min (rgb): %d%%, %d%%, %d%%\n"
+			"\tgamma (rgb):         %.2f, %.2f, %.2f\n", ledstripe->dev_name, ledstripe->dev_speed,
 			LED_TYPES[ledstripe->dev_type], ledstripe->actual_num_leds, ledstripe->num_bbuf,
 			ledstripe->led_inset[0] * 100.0, ledstripe->led_inset[1] * 100.0, ledstripe->led_inset[2] * 100.0,
 			ledstripe->led_inset[3] * 100.0, ledstripe->brightness, ledstripe->intensity[0], ledstripe->intensity[1],
-			ledstripe->intensity[2], ledstripe->gamma[0], ledstripe->gamma[1], ledstripe->gamma[2]);
+			ledstripe->intensity[2], ledstripe->intensity_min[0], ledstripe->intensity_min[1],
+			ledstripe->intensity_min[2], ledstripe->gamma[0], ledstripe->gamma[1], ledstripe->gamma[2]);
 }
 
 void ambitv_ledstripe_free(struct ambitv_sink_component* component)

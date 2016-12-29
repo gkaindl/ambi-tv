@@ -28,7 +28,10 @@ enum ambitv_special_sinkcommand
 	ambitv_special_sinkcommand_gamma_blue,
 	ambitv_special_sinkcommand_intensity_red,
 	ambitv_special_sinkcommand_intensity_green,
-	ambitv_special_sinkcommand_intensity_blue
+	ambitv_special_sinkcommand_intensity_blue,
+	ambitv_special_sinkcommand_min_intensity_red,
+	ambitv_special_sinkcommand_min_intensity_green,
+	ambitv_special_sinkcommand_min_intensity_blue
 };
 
 enum ambitv_special_audiocommand

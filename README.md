@@ -20,6 +20,7 @@ Mit einem lauffähig zu kaufenden Raspberry Pi ist es sehr leicht, ein eigenständ
 - die 3D-Modi Side-by-Side (SBS) und Top-over-Bottom (TOB) können für eine richtig skalierte LED-Ansteuerung aktiviert werden
 - neben dem Chiptyp LPD8806 auf dem LED-Stripe werden nun auch die Chiptypen WS280x, WS281x, SK6812 und APA10x unterstützt
 - die Randerkennung wurde überarbeitet um nicht durch Senderlogos oder Artefakte an den Seitenrändern gestört zu werden
+- es kann eine Minimalhelligkeit der LED festgelegt werden, um das Ambilight auch als einzige Raumbeleuchtung verwenden zu können
 
 ## Verwendete GIT-Projekte
 
@@ -199,6 +200,9 @@ Es können mehrere Filter gleichzeitig aktiviert werden indem deren Zahlen addier
 - `intensity-red`: Legt die Einzelhelligkeit der roten LEDs in Prozent der Gesamthelligkeit fest. Gültig sind Werte von 0..100.  
 - `intensity-green`: Legt die Einzelhelligkeit der grünen LEDs in Prozent der Gesamthelligkeit fest. Gültig sind Werte von 0..100.  
 - `intensity-blue`: Legt die Einzelhelligkeit der blauen LEDs in Prozent der Gesamthelligkeit fest. Gültig sind Werte von 0..100.  
+- `intensity-min-red`: Legt die Minimalhelligkeit der roten LEDs in Prozent der vollen Helligkeit fest. Gültig sind Werte von 0..100.  
+- `intensity-min-green`: Legt die Minimalhelligkeit der grünen LEDs in Prozent der vollen Helligkeit fest. Gültig sind Werte von 0..100.  
+- `intensity-min-blue`: Legt die Minimalhelligkeit der blauen LEDs in Prozent der vollen Helligkeit fest. Gültig sind Werte von 0..100.  
 
 ## ambi-tv erweitern
 
@@ -228,6 +232,9 @@ Welche Modusnummer welches Programm aufruft und wieviele Modi es gibt, hängt von
 
 *Intensität einer Farbe setzen (0...100%):*  
 `http://raspi:port?intensity-color=nnn`
+
+*Minimalintensität einer Farbe setzen (0...100%):*  
+`http://raspi:port?intensity-min-color=nnn`
 
 *Gamma-Wert einer Farbe setzen (0.00 ... 9.99):*  
 `http://raspi:port?gamma-color=n.nn`
