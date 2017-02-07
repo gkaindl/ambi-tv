@@ -2,7 +2,7 @@
 
 Eine Weiterentwicklung von gkaindl's Framework für ein Ambilight mit einem Embedded-Linux-System (z.B. Raspberry), einem USB-Framegrabber und adressierbaren RGB-LED-Stripes
 
-Hier ist eine [Video-Demonstration](https://www.youtube.com/watch?v=gjBJl8lVzbc) des Standard-Modus. Ein Beispiel für die zusätzliche Audio-Funktion findet Ihr [hier](http://www.youtube.com/watch?v=E6IvAzZ8_ws).
+Hier ist eine [Video-Demonstration](https://www.youtube.com/watch?v=gjBJl8lVzbc) des Standard-Modus. Ein Beispiel für die zusätzliche Audio-Funktion findet Ihr [hier](https://youtu.be/Ifz-ns2uNhg).
 
 ambi-tv basiert auf der Idee, einen HDMI-Splitter und einen HDMI-zu-CVBS-Umsetzer für das parallele Erfassen des angezeigten Bildes und dessen Darstellung auf einem LED-Stripe zu verwenden. Das funktioniert mit jeder HDMI-Quelle ohne die Notwendigkeit, einen zusätzlichen Computer zu verwenden. 
 
@@ -67,7 +67,7 @@ Leider kann der Umsetzer nur Stereo-PCM-Signale in ein für den Audio-Grabber ver
 
 ## Software Installation
 
-Bevor ambi-tv verwendet werden kann, werden für den Audio-Spektrum-Analyzer noch einige Bibliotheken und Tools benötigt. Diese kann man sich durch Eingabe von `'sudo apt-get install libfftw3-dev libasound2-dev alsa-utils'` installieren.  
+Bevor ambi-tv verwendet werden kann, werden für den Audio-Spektrum-Analyzer noch einige Bibliotheken und Tools benötigt. Diese kann man sich durch Eingabe von `'sudo apt-get install git libfftw3-dev libasound2-dev alsa-utils'` installieren.  
 Um zu prüfen, ob nach dem Anstecken des USB-Grabbers alle Treiber geladen worden sind, schaut man mit `'ls /dev | grep video'` ob das Gerät "video0" vorhanden ist. Ob der Audiograbber-Treiber geladen wurde, sieht man mit `'arecord -l'`. Hier sollte der usbtv-Treiber angezeigt werden:
 
     Liste der Hardware-Geräte (CAPTURE)
@@ -75,9 +75,9 @@ Um zu prüfen, ob nach dem Anstecken des USB-Grabbers alle Treiber geladen worden
     	Sub-Geräte: 1/1
     	Sub-Gerät #0: subdevice #0
    
-Die Gerätenummer "0" und Subgerätenummer "0" merken wir uns.
+Die Kartenummer "0" und Subgerätenummer "0" merken wir uns.
 
-Wird ein LPD88x6-LED-Streifen verwendet, muß sichergestellt werden, daß der SPI-Treiber geladen wird. Das läßt sich am einfachsten über "raspi-config" einstellen oder über den manuellen Eintrag des Moduls `'spi-bcm2708'` in der modules-Datei.
+Wird ein LPD88x6-LED-Streifen verwendet, muß sichergestellt werden, daß der SPI-Treiber geladen wird. Das läßt sich am einfachsten über "raspi-config" einstellen.
 
 Nun clonen wir das ambi-tv-Repository mit `'git clone http://github.com/xSnowHeadx/ambi-tv.git ambi-tv'` in das Nutzerverzeichnis (in der Regel "pi"). Mit `'cd ambi-tv'` wechseln wir in das ambi-tv-Verzeichnis und bauen das Projekt mit `'make'`. Die ausführbare Datei finden wir nun im Verzeichnis "bin".
 Soll ambi-tv automatisch beim Start des Raspberry ausgeführt werden, muß als root in die Datei "/etc/rc.local" folgende Zeile vor "exit 0" eingefügt werden: `'sudo /home/pi/ambi-tv/bin/ambi-tv -f /home/pi/ambi-tv/ambi-tv.conf &'`.  (Das "&" am Zeilenende ist wichtig sonst bleibt der Raspberry beim Booten hängen!)
@@ -225,16 +225,13 @@ Aus dieser Datei kann man Anzahl, Anordnung und Namen der implementierten Progra
 *Modus setzen:*  
 `http://raspi:port?mode=n`
 
-Welche Modusnummer welches Programm aufruft und wieviele Modi es gibt, hängt von den Einträgen in der Config-Datei ab. Alle Werte, die größer als der maximal mögliche Modus sind schalten das Ambilight aus.
+Welche Modusnummer welches Programm aufruft und wieviele Modi es gibt, hängt von den Einträgen in der Config-Datei ab. Alle Werte, die größer als der maximal mögliche Modus sind schalten das Ambilight aus. Die Zählung beginnt dabei bei "0" für das erste Programm.
 
 *Gesamthelligkeit setzen (0...100%):*  
 `http://raspi:port?brightness=nnn`
 
 *Intensität einer Farbe setzen (0...100%):*  
 `http://raspi:port?intensity-color=nnn`
-
-*Minimalintensität einer Farbe setzen (0...100%):*  
-`http://raspi:port?intensity-min-color=nnn`
 
 *Gamma-Wert einer Farbe setzen (0.00 ... 9.99):*  
 `http://raspi:port?gamma-color=n.nn`

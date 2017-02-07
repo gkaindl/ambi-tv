@@ -418,7 +418,7 @@ static void ambitv_ledstripe_clear_leds(struct ambitv_sink_component* component)
 			break;
 
 		case LED_TYPE_LPD880x:
-			memset(ledstripe->out, 0x80, ledstripe->out_len);
+			memset(ledstripe->out, 0x80, ledstripe->out_len - ledstripe->use_trailer);
 			break;
 
 		default:
@@ -1040,6 +1040,9 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 		if ((priv->colpos[0] == 3) || (priv->colpos[1] == 3) || (priv->colpos[2] == 3))
 			memcpy(priv->colpos, LED_COLPOS[priv->dev_type], 3);
 
+		if(priv->dev_type == LED_TYPE_LPD880x)
+			priv->use_trailer = (priv->actual_num_leds / 16) + 1;
+
 		priv->out_len = sizeof(unsigned char) * priv->bytes_pp * priv->actual_num_leds + priv->use_leader
 				+ priv->use_trailer;
 		priv->out = (unsigned char*) malloc(priv->out_len);
@@ -1070,7 +1073,7 @@ ambitv_ledstripe_create(const char* name, int argc, char** argv)
 			switch (priv->dev_type)
 			{
 			case LED_TYPE_LPD880x:
-				*(priv->out + priv->out_len - priv->use_trailer - 1) = 0x00;
+				memset(priv->out + priv->out_len - priv->use_trailer - 1, 0x00, priv->use_trailer);
 				break;
 
 			case LED_TYPE_APA10x:
