@@ -603,7 +603,6 @@ static int ambitv_main_configure(int argc, char** argv)
 			break;
 
 		case 'b':
-		case 'p':
 		{
 			if (NULL != optarg)
 			{
@@ -612,10 +611,30 @@ static int ambitv_main_configure(int argc, char** argv)
 
 				if ('\0' == *eptr && nbuf > 0)
 				{
-					if ('b' == c)
-						conf.gpio_idx = (int) nbuf;
-					else if ('p' == c)
-						conf.program_idx = (int) nbuf;
+					conf.gpio_idx = (int) nbuf;
+				}
+				else
+				{
+					ambitv_log(ambitv_log_error, LOGNAME "invalid argument for '%s': '%s'.\n", argv[optind - 2],
+							optarg);
+					ambitv_usage(argv[0]);
+					return -1;
+				}
+			}
+
+			break;
+		}
+
+		case 'p':
+		{
+			if (NULL != optarg)
+			{
+				char* eptr = NULL;
+				long nbuf = strtol(optarg, &eptr, 10);
+
+				if ('\0' == *eptr && nbuf >= 0)
+				{
+					conf.program_idx = (int) nbuf;
 				}
 				else
 				{
