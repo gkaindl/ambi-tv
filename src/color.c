@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <math.h> 
 
+#include "color.h"
 #include "log.h"
 
 #define LOGNAME   "color: "
