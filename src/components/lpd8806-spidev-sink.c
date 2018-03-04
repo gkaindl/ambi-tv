@@ -33,6 +33,8 @@
 #include "../log.h"
 #include "../color.h"
 
+#include "lpd8806-spidev-sink.r"
+
 #define DEFAULT_DEV_NAME         "/dev/spidev0.0"
 #define DEFAULT_SPI_SPEED        2500000
 #define DEFAULT_GAMMA            1.6   // works well for me, but ymmv...
@@ -43,19 +45,7 @@ static const char ambitv_lpd8806_spidev_mode  = 0;
 static const char ambitv_lpd8806_spidev_bits  = 8;
 static const char ambitv_lpd8806_spidev_lsbf  = 0;
 
-struct ambitv_lpd8806_priv {
-   char*             device_name;
-   int               fd, spi_speed, num_leds, actual_num_leds, grblen;
-   int               led_len[4], *led_str[4];   // top, bottom, left, right
-   double            led_inset[4];              // top, bottom, left, right
-   unsigned char*    grb;
-   unsigned char**   bbuf;
-   int               num_bbuf, bbuf_idx;
-   double            gamma[3];      // RGB gamma, not GRB!
-   unsigned char*    gamma_lut[3];  // also RGB
-};
-
-static int*
+int*
 ambitv_lpd8806_ptr_for_output(struct ambitv_lpd8806_priv* lpd8806, int output, int* led_str_idx, int* led_idx)
 {
    int idx = 0, *ptr = NULL;
@@ -80,7 +70,7 @@ ambitv_lpd8806_ptr_for_output(struct ambitv_lpd8806_priv* lpd8806, int output, i
    return ptr;
 }
 
-static int
+int
 ambitv_lpd8806_map_output_to_point(
    struct ambitv_sink_component* component,
    int output,
