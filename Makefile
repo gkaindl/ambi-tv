@@ -27,7 +27,8 @@ SRC_AMBITV = src/main.c src/video-fmt.c src/parse-conf.c src/component.c   \
 	src/components/v4l2-grab-source.c src/components/avg-color-processor.c  \
 	src/components/lpd8806-spidev-sink.c src/components/timer-source.c      \
 	src/components/edge-color-processor.c                                   \
-	src/components/mood-light-processor.c
+	src/components/mood-light-processor.c\
+	src/components/web-processor.c
 OBJ_AMBITV = $(SRC_AMBITV:.c=.o)
 
 dir=@mkdir -p bin

@@ -30,12 +30,13 @@
 
 #define DEFAULT_BOX_WIDTH     4
 #define DEFAULT_BOX_HEIGHT    4
+#define DEFAULT_COARSENESS    4
 
 #define LOGNAME   "edge-color-processor: "
 
 struct ambitv_edge_processor_priv {
    void* frame;
-   int width, height, bytesperline, boxsize[2];
+   int width, height, bytesperline, boxsize[2], coarseness;
    enum ambitv_video_format fmt;
 };
 
@@ -88,12 +89,12 @@ ambitv_edge_color_processor_update_sink(
          int x, y, x2, y2;
          
          if (0 == sink->f_map_output_to_point(sink, i, edge->width, edge->height, &x, &y)) {
-            x  = CONSTRAIN(x-4, 0, edge->width);
-            y  = CONSTRAIN(y-4, 0, edge->height);
-            x2 = CONSTRAIN(x+4, 0, edge->width);
-            y2 = CONSTRAIN(y+4, 0, edge->height);
+            x  = CONSTRAIN(x - (edge->boxsize[0]/2), 0, edge->width);
+            y  = CONSTRAIN(y - (edge->boxsize[1]/2), 0, edge->height);
+            x2 = CONSTRAIN(x + (edge->boxsize[0]/2), 0, edge->width);
+            y2 = CONSTRAIN(y + (edge->boxsize[1]/2), 0, edge->height);
             
-            ambitv_video_fmt_avg_rgb_for_block(rgb, edge->frame, x, y, x2-x, y2-y, edge->bytesperline, edge->fmt, 4);
+            ambitv_video_fmt_avg_rgb_for_block(rgb, edge->frame, x, y, x2-x, y2-y, edge->bytesperline, edge->fmt, edge->coarseness);
             
             sink->f_set_output_to_rgb(sink, i, rgb[0], rgb[1], rgb[2]);
          }
@@ -115,6 +116,7 @@ ambitv_edge_color_processor_configure(struct ambitv_edge_processor_priv* edge, i
    static struct option lopts[] = {
       { "box-width", required_argument, 0, '0' },
       { "box-height", required_argument, 0, '1' },
+      { "coarseness", required_argument, 0, '2' },
       { NULL, 0, 0, 0 }
    };
 
@@ -144,6 +146,24 @@ ambitv_edge_color_processor_configure(struct ambitv_edge_processor_priv* edge, i
             
             break;
          }
+         case '2': {
+            if (NULL != optarg) {
+               char* eptr = NULL;
+               long nbuf = strtol(optarg, &eptr, 10);
+               
+               if ('\0' == *eptr && nbuf > 0) {
+                  edge->coarseness = (int)nbuf;
+               } else {
+                  ambitv_log(ambitv_log_error, LOGNAME "invalid argument for '%s': '%s'.\n",
+                     argv[optind-2], optarg);
+                  ret = -1;
+                  goto errReturn;
+               }  
+            }  
+
+
+            break;
+	}
 
          default:
             break;
@@ -169,8 +189,11 @@ ambitv_edge_color_processor_print_configuration(struct ambitv_processor_componen
    ambitv_log(ambitv_log_info,
       "\tbox-width:  %d\n"
       "\tbox-height: %d\n",
+      "\tcoarseness: %d\n",
       edge->boxsize[0],
-      edge->boxsize[1]
+      edge->boxsize[1],
+      edge->coarseness
+
    );
 }
 
@@ -195,6 +218,7 @@ ambitv_edge_color_processor_create(const char* name, int argc, char** argv)
       
       priv->boxsize[0]  = DEFAULT_BOX_WIDTH;
       priv->boxsize[1]  = DEFAULT_BOX_HEIGHT;
+      priv->coarseness  = DEFAULT_COARSENESS;
 
       edge_processor->f_print_configuration  = ambitv_edge_color_processor_print_configuration;
       edge_processor->f_consume_frame        = ambitv_edge_color_processor_handle_frame;
