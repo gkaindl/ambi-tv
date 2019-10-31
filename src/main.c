@@ -41,12 +41,16 @@
 #define LOGNAME      "main: "
 
 #define DEFAULT_CONFIG_PATH   "/etc/ambi-tv.conf"
+#define DEFAULT_HTTP_PORT     40100
 #define BUTTON_MILLIS         250
 #define BUTTON_MILLIS_HYST    10
 
 struct ambitv_main_conf {
    int            program_idx;
    int            gpio_idx;
+   int            http_on;
+   char*          http_addr;
+   unsigned       http_port;
    char*          config_path;
    
    int            cur_prog, ambitv_on, gpio_fd;
@@ -57,6 +61,9 @@ struct ambitv_main_conf {
 
 static struct ambitv_main_conf conf;
 static http* http_backend;
+
+static int
+ambitv_main_configure(int argc, char** argv, int from_file);
 
 static void
 ambitv_signal_handler(int signum)
@@ -73,6 +80,12 @@ ambitv_handle_config_block(const char* name, int argc, char** argv)
    switch(name[0]) {
       case '&':
          ret = ambitv_register_program_for_name(&name[1], argc, argv);
+         break;
+      
+      case '@':
+         if (0 == strcmp(&name[1], "main")) {
+            ret = ambitv_main_configure(argc, argv, 1);
+         }
          break;
       
       default:
@@ -390,25 +403,33 @@ ambitv_usage(const char* name)
       "usage: %s [options]\n"
       "\n"
       "options:\n"
-      "\t-b/--button-gpio [i]     gpio pin to use as physical button. function disabled if i < 0. (default: -1).\n"
+      "\t-b/--button_gpio [i]     gpio pin to use as physical button. function disabled if i < 0. (default: -1).\n"
       "\t-f/--file [path]         use the configuration file at [path] (default: %s).\n"
       "\t-h,--help                display this help text.\n"
       "\t-p,--program [i]         run the [i]-th program from the configuration file on start-up.\n"
+      "\t-s,--http_backend [0|1]  enable or disable the http api backend (0 to disable, 1 to enable)\n"
+      "\t-a,--http_address [ip]   optionally specifiy a local IP address for the http backend, like 127.0.0.1\n"
+      "\t-l,--http_port [port]    specify a listening port for the http backend. defaults to %u\n"
       "\n",
-         p, DEFAULT_CONFIG_PATH
+         p, DEFAULT_CONFIG_PATH, DEFAULT_HTTP_PORT
    );
 }
 
 static int
-ambitv_main_configure(int argc, char** argv)
+ambitv_main_configure(int argc, char** argv, int from_file)
 {
    int c, ret = 0;
 
+   optind = 0;
+
    static struct option lopts[] = {
-      { "button-gpio", required_argument, 0, 'b' },
+      { "button_gpio", required_argument, 0, 'b' },
       { "file", required_argument, 0, 'f' },
       { "help", no_argument, 0, 'h' },
       { "program", required_argument, 0, 'p' },
+      { "http_backend", required_argument, 0, 's' },
+      { "http_address", required_argument, 0, 'a' },
+      { "http_port", required_argument, 0, 'l' },
       { NULL, 0, 0, 0 }
    };
 
@@ -420,6 +441,12 @@ ambitv_main_configure(int argc, char** argv)
 
       switch (c) {
          case 'f': {
+            if (from_file) {
+               ambitv_log(ambitv_log_error,
+                  LOGNAME "\"file\" argument can't be used in config file.\n");
+               return -1;
+            }
+            
             if (NULL != optarg) {
                conf.config_path = strdup(optarg);
             }
@@ -427,18 +454,55 @@ ambitv_main_configure(int argc, char** argv)
             break;
          }
          
+         case 'a': {
+            if (NULL != optarg) {
+               conf.http_addr = strdup(optarg);
+            }
+            break;
+         }
+         
          case 'b':
-         case 'p': {
+         case 'p':
+         case 's':
+         case 'l': {
             if (NULL != optarg) {
                char* eptr = NULL;
+               int valid = 0;
                long nbuf = strtol(optarg, &eptr, 10);
 
-               if ('\0' == *eptr && nbuf > 0) {
-                  if ('b' == c)
-                     conf.gpio_idx = (int)nbuf;
-                  else if ('p' == c)
-                     conf.program_idx = (int)nbuf;
-               } else {
+               if ('\0' == *eptr) {
+                  switch (c) {
+                     case 'b':
+                        if (nbuf >= 0) {
+                           conf.gpio_idx = (int)nbuf;
+                           valid = 1;
+                        }
+                        break;
+                     case 'p':
+                        if (nbuf >= 0) {
+                           conf.program_idx = (int)nbuf;
+                           valid = 1;
+                        }
+                        break;
+                     case 's':
+                        if (0 == nbuf || 1 == nbuf) { 
+                           conf.http_on = (int)nbuf;
+                           valid = 1;
+                        }
+                        break;
+                     case 'l': {
+                        if (nbuf > 0 && nbuf <= 65535) {
+                           conf.http_port = (unsigned)nbuf;
+                           valid = 1;
+                        }
+                        break;   
+                     }
+                     default:
+                        break;
+                  }
+               }
+               
+               if (!valid) {
                   ambitv_log(ambitv_log_error, LOGNAME "invalid argument for '%s': '%s'.\n",
                      argv[optind-2], optarg);
                   ambitv_usage(argv[0]);
@@ -450,6 +514,12 @@ ambitv_main_configure(int argc, char** argv)
          }
          
          case 'h': {
+            if (from_file) {
+               ambitv_log(ambitv_log_error,
+                  LOGNAME "\"help\" argument can't be used in config file.\n");
+               return -1;
+            }
+            
             ambitv_usage(argv[0]);
             exit(0);
          }
@@ -467,6 +537,23 @@ ambitv_main_configure(int argc, char** argv)
    }
 
    return ret;
+}
+
+static void
+ambitv_print_main_configuration()
+{
+   printf(
+      "\tstarting program:       %d\n"
+      "\tbutton gpio:            %d\n"
+      "\thttp backend active:    %s\n"
+      "\thttp backend address:   %s\n"
+      "\thttp backend port:      %u\n",
+         conf.program_idx,
+         conf.gpio_idx,
+         conf.http_on ? "yes" : "no",
+         conf.http_addr ? conf.http_addr : "all addresses",
+         conf.http_port
+   );
 }
 
 int
@@ -494,22 +581,29 @@ main(int argc, char** argv)
    conf.config_path     = DEFAULT_CONFIG_PATH;
    conf.ambitv_on       = 1;
    conf.gpio_fd         = -1;
+   conf.http_on         = 0;
+   conf.http_addr       = NULL;
+   conf.http_port       = DEFAULT_HTTP_PORT;
    conf.running         = 1;
-   
-   ret = ambitv_main_configure(argc, argv);
+      
+   ret = ambitv_main_configure(argc, argv, 0);
    if (ret < 0)
       return -1;
-   
+      
    parser = ambitv_conf_parser_create();
    parser->f_handle_block = ambitv_handle_config_block;
    ret = ambitv_conf_parser_read_config_file(parser, conf.config_path);
    ambitv_conf_parser_free(parser);
-   
+      
    if (ret < 0) {
       ambitv_log(ambitv_log_error, LOGNAME "failed to parse configuration file, aborting...\n");
       ambitv_usage(argv[0]);
       return -1;
    }
+   
+   // re-run configuration from command line, so that command line arguments
+   // can override settings from the configuration file.
+   (void)ambitv_main_configure(argc, argv, 0);
    
    if (ambitv_num_programs <= 0) {
       ambitv_log(ambitv_log_error, LOGNAME "no programs available, aborting...\n");
@@ -534,17 +628,22 @@ main(int argc, char** argv)
       }
    }
    
-   http_backend = http_create(
-      NULL,
-      10000
-   );
+   if (conf.http_on) {
+      http_backend = http_create(
+         conf.http_addr,
+         conf.http_port
+      );
       
-   if (!http_backend) {
-      ambitv_log(ambitv_log_error, LOGNAME "failed to create http backend: %s\n", strerror(errno));
-      return -1;
-   }
+      if (!http_backend) {
+         ambitv_log(ambitv_log_error, LOGNAME "failed to create http backend: %s\n", strerror(errno));
+         return -1;
+      } else {
+         ambitv_log(ambitv_log_info, LOGNAME "http backend created at %s:%u\n",
+            conf.http_addr ? conf.http_addr : "<any>", conf.http_port);
+      }
    
-   http_set_keypair_callback(http_backend, ambitv_handle_http_backend_keypair);
+      http_set_keypair_callback(http_backend, ambitv_handle_http_backend_keypair);
+   }
    
    tcgetattr(STDIN_FILENO, &tt);
    tt_orig = tt.c_lflag;
@@ -558,6 +657,9 @@ main(int argc, char** argv)
    }
    
    conf.cur_prog = conf.program_idx;
+   
+   printf("ambitv configuration:\n");
+   ambitv_print_main_configuration();
    
    ret = ambitv_program_run(ambitv_programs[conf.cur_prog]);
    
