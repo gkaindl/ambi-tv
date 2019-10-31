@@ -32,7 +32,7 @@
 #define SYSFS_GPIO_BASE    "/sys/class/gpio"
 
 static int
-ambitv_gpio_open_button_irq_sysfs(num_gpio)
+ambitv_gpio_open_button_irq_sysfs(int num_gpio)
 {
    int fd = -1, len;
    char buf[64];

@@ -17,22 +17,12 @@
 *  along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __AMBITV_COLOR_H__
-#define __AMBITV_COLOR_H__
+#ifndef __AMBITV_COLOR_LAMP_PROCESSOR_H__
+#define __AMBITV_COLOR_LAMP_PROCESSOR_H__
 
-unsigned char*
-ambitv_color_gamma_lookup_table_create(double gamma_value);
+#include "../component.h"
 
-void
-ambitv_color_gamma_lookup_table_free(unsigned char* lut);
+struct ambitv_processor_component*
+ambitv_color_lamp_processor_create(const char* name, int argc, char** argv);
 
-unsigned char
-ambitv_color_map_with_lut(unsigned char* lut, unsigned char color_component);
-
-void
-ambitv_hsv_to_rgb(int hue, int sat, int val, int* r, int* g, int* b);
-
-void
-ambitv_hsl_to_rgb(int hue, int sat, int lum, int* r, int* g, int* b);
-
-#endif // __AMBITV_COLOR_H__
+#endif // __AMBITV_COLOR_LAMP_PROCESSOR_H__

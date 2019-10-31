@@ -38,6 +38,9 @@ struct ambitv_sink_component {
    int      active;
 
    void(*f_print_configuration)(struct ambitv_sink_component*);
+   int (*f_provide_keypairs)(struct ambitv_sink_component*, void* ctx, void (*f)(const char*, int, const char*, void*));
+   int (*f_receive_keypair)(struct ambitv_sink_component*, const char*, const char*);
+   
    int (*f_start_sink)(struct ambitv_sink_component*);
    int (*f_stop_sink)(struct ambitv_sink_component*);
    int (*f_num_outputs)(struct ambitv_sink_component*);
@@ -55,6 +58,8 @@ struct ambitv_processor_component {
    int      active;
 
    void(*f_print_configuration)(struct ambitv_processor_component*);
+   int (*f_provide_keypairs)(struct ambitv_processor_component*, void* ctx, void (*f)(const char*, int, const char*, void*));
+   int (*f_receive_keypair)(struct ambitv_processor_component*, const char*, const char*);
    
    int (*f_consume_frame)(struct ambitv_processor_component*, void*, int, int, int, enum ambitv_video_format);
    int (*f_update_sink)(struct ambitv_processor_component*, struct ambitv_sink_component*);
@@ -69,6 +74,8 @@ struct ambitv_source_component {
    volatile int   active;
    
    void(*f_print_configuration)(struct ambitv_source_component*);
+   int (*f_provide_keypairs)(struct ambitv_source_component*, void* ctx, void (*f)(const char*, int, const char*, void*));
+   int (*f_receive_keypair)(struct ambitv_source_component*, const char*, const char*);
    
    pthread_t      thread;
    
@@ -94,6 +101,17 @@ ambitv_component_activate(void* component);
 
 int
 ambitv_component_deactivate(void* component);
+
+int
+ambitv_component_provide_all_keypairs(
+   void* ctx,
+   int (*handle_keypair)(const char* key, int value_int, const char* value_str, void* ctx)
+);
+
+int
+ambitv_component_receive_keypair(
+   void* component, const char* name, const char* value
+);
 
 
 struct ambitv_source_component*

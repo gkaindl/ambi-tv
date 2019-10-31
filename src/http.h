@@ -17,22 +17,36 @@
 *  along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __AMBITV_COLOR_H__
-#define __AMBITV_COLOR_H__
+#ifndef __AMBITV_HTTP_H__
+#define __AMBITV_HTTP_H__
 
-unsigned char*
-ambitv_color_gamma_lookup_table_create(double gamma_value);
+#include <sys/select.h>
 
-void
-ambitv_color_gamma_lookup_table_free(unsigned char* lut);
+typedef struct http http;
 
-unsigned char
-ambitv_color_map_with_lut(unsigned char* lut, unsigned char color_component);
+http*
+http_create(const char* ip_addr, unsigned port);
 
 void
-ambitv_hsv_to_rgb(int hue, int sat, int val, int* r, int* g, int* b);
+http_free(http* server);
 
 void
-ambitv_hsl_to_rgb(int hue, int sat, int lum, int* r, int* g, int* b);
+http_set_keypair_callback(
+   http* server, int (*callback) (http*, const char*, const char* )
+);
 
-#endif // __AMBITV_COLOR_H__
+int
+http_fill_fd_sets(
+   http* server, fd_set* read_fds, fd_set* write_fds, int cur_max_fd
+);
+
+void
+http_handle_fd_sets(http* server, fd_set* read_fds, fd_set* write_fds);
+
+int
+http_reply_keypair(http* server, const char* name, const char* value);
+
+int
+http_reply_keypair_int(http* server, const char* name, int value);
+
+#endif // __AMBITV_HTTP_H__

@@ -31,9 +31,11 @@
 
 #include "parse-conf.h"
 #include "registrations.h"
+#include "component.h"
 #include "program.h"
 #include "gpio.h"
 #include "util.h"
+#include "http.h"
 #include "log.h"
 
 #define LOGNAME      "main: "
@@ -54,6 +56,7 @@ struct ambitv_main_conf {
 };
 
 static struct ambitv_main_conf conf;
+static http* http_backend;
 
 static void
 ambitv_signal_handler(int signum)
@@ -88,10 +91,34 @@ ambitv_millis_between(struct timeval* now, struct timeval* earlier)
 }
 
 static int
-ambitv_cycle_next_program()
+ambitv_select_program(int program_idx)
 {
    int ret = 0;
    
+   if (program_idx >= ambitv_num_programs) {
+      return -1;
+   }
+   
+   conf.cur_prog = program_idx;
+   
+   if (conf.ambitv_on) {
+      ret = ambitv_program_run(ambitv_programs[conf.cur_prog]);
+   
+      if (ret < 0) {
+         ambitv_log(ambitv_log_error, LOGNAME "failed to switch to program '%s', aborting...\n",
+            ambitv_programs[conf.cur_prog]->name);
+      } else {
+         ambitv_log(ambitv_log_info, LOGNAME "switched to program '%s'.\n",
+            ambitv_programs[conf.cur_prog]->name);
+      }
+   }
+   
+   return ret;
+}
+
+static int
+ambitv_cycle_next_program()
+{   
    if (!conf.ambitv_on) {
       ambitv_log(ambitv_log_info,
          LOGNAME "not cycling program, because state is paused.\n");
@@ -99,27 +126,19 @@ ambitv_cycle_next_program()
       return 0;
    }
    
-   conf.cur_prog = (conf.cur_prog + 1) % ambitv_num_programs;
-   
-   ret = ambitv_program_run(ambitv_programs[conf.cur_prog]);
-   
-   if (ret < 0) {
-      ambitv_log(ambitv_log_error, LOGNAME "failed to switch to program '%s', aborting...\n",
-         ambitv_programs[conf.cur_prog]->name);
-   } else {
-      ambitv_log(ambitv_log_info, LOGNAME "switched to program '%s'.\n",
-         ambitv_programs[conf.cur_prog]->name);
-   }
-   
-   return ret;
+   return ambitv_select_program((conf.cur_prog + 1) % ambitv_num_programs);
 }
-
+   
 static int
-ambitv_toggle_paused()
+ambitv_set_on(int is_on)
 {
    int ret = 0;
    
-   conf.ambitv_on = !conf.ambitv_on;
+   if (is_on == conf.ambitv_on) {
+      return 0;
+   }
+   
+   conf.ambitv_on = is_on;
    
    if (conf.ambitv_on) {
       ret = ambitv_program_run(ambitv_programs[conf.cur_prog]);
@@ -140,22 +159,118 @@ ambitv_toggle_paused()
 }
 
 static int
+ambitv_toggle_on()
+{
+   return ambitv_set_on(!conf.ambitv_on);
+}
+
+static int
+ambitv_consume_http_keypair(
+   const char* name, int value_int, const char* value_str, void* ctx
+)
+{
+   int res = 0;
+   http* server = (http*)ctx;
+   
+   if (!name || !server) {
+      return -1;
+   }
+   
+   if (value_str) {
+      res = http_reply_keypair(server, name, value_str);
+   } else {
+      res = http_reply_keypair_int(server, name, value_int);
+   }
+   
+   return res;
+}
+
+static int
+ambitv_handle_http_backend_keypair(
+   http* server, const char* name, const char* value
+) {
+   int success = -1;
+   
+   if (!name || !value) {
+      return -1;
+   }
+   
+   switch (*name) {
+      case 'o': {
+         if (0 == strcmp("on", name)) {
+            success = ambitv_set_on(atoi(value));
+         }
+         break;
+      }
+      
+      case 'p': {
+         if (0 == strcmp("program", name)) {
+            success = ambitv_select_program(atoi(value));
+         }
+         break;
+      }
+      
+      case 'q': {
+         if (0 == strcmp("query", name) && atoi(value)) {
+            success =
+               http_reply_keypair_int(server, "on", conf.ambitv_on);
+            success = success ||
+               http_reply_keypair_int(server, "program", conf.cur_prog);
+            success = success ||
+               ambitv_component_provide_all_keypairs(
+                  server,
+                  ambitv_consume_http_keypair
+            );
+         }
+         break;
+      }
+      
+      default: {
+         char* pos = strchr(name, (int)':');
+         
+         if (pos) {
+            char* valname = (pos+1);
+            *pos = 0;
+            
+            success = ambitv_component_receive_keypair(
+               ambitv_component_find_by_name(name),
+               valname,
+               value
+            );
+               
+            *pos = ':';
+         }
+         
+         break;
+      }
+   }
+   
+   return success;
+}
+
+static int
 ambitv_runloop()
 {
-   int ret = 0;
+   int ret = 0, max_fd = -1;
    unsigned char c = 0;
-   fd_set fds, ex_fds;
+   fd_set read_fds, write_fds, ex_fds;
    struct timeval tv;
    
-   FD_ZERO(&fds); FD_ZERO(&ex_fds);
-   FD_SET(STDIN_FILENO, &fds);
+   FD_ZERO(&read_fds); FD_ZERO(&write_fds); FD_ZERO(&ex_fds);
+   FD_SET(STDIN_FILENO, &read_fds);
    if (conf.gpio_fd >= 0)
       FD_SET(conf.gpio_fd, &ex_fds);
+   
+   max_fd = MAX(STDIN_FILENO, conf.gpio_fd);
+   
+   if (http_backend) {
+      max_fd = http_fill_fd_sets(http_backend, &read_fds, &write_fds, max_fd);
+   }
    
    tv.tv_sec   = 0;
    tv.tv_usec  = 500000;
    
-   ret = select(MAX(STDIN_FILENO, conf.gpio_fd)+1, &fds, NULL, &ex_fds, &tv);
+   ret = select(max_fd+1, &read_fds, &write_fds, &ex_fds, &tv);
       
    if (ret < 0) {
       if (EINTR != errno && EWOULDBLOCK != errno) {
@@ -167,7 +282,7 @@ ambitv_runloop()
       goto finishLoop;
    }
    
-   if (FD_ISSET(STDIN_FILENO, &fds)) {
+   if (FD_ISSET(STDIN_FILENO, &read_fds)) {
       ret = read(STDIN_FILENO, &c, 1);
       
       if (ret < 0) {
@@ -191,7 +306,7 @@ ambitv_runloop()
          }
          
          case 't': {
-            ret = ambitv_toggle_paused();
+            ret = ambitv_toggle_on();
             if (ret < 0)
                goto finishLoop;
             
@@ -247,13 +362,17 @@ ambitv_runloop()
             if (conf.button_cnt > 1) {
                ret = ambitv_cycle_next_program();
             } else {
-               ret = ambitv_toggle_paused();
+               ret = ambitv_toggle_on();
             }
             
             conf.button_cnt = 0;
             memset(&conf.last_button_press, 0, sizeof(struct timeval));
          }
       }
+   }
+   
+   if (http_backend) {
+      http_handle_fd_sets(http_backend, &read_fds, &write_fds);
    }
 
 finishLoop:
@@ -415,6 +534,18 @@ main(int argc, char** argv)
       }
    }
    
+   http_backend = http_create(
+      NULL,
+      10000
+   );
+      
+   if (!http_backend) {
+      ambitv_log(ambitv_log_error, LOGNAME "failed to create http backend: %s\n", strerror(errno));
+      return -1;
+   }
+   
+   http_set_keypair_callback(http_backend, ambitv_handle_http_backend_keypair);
+   
    tcgetattr(STDIN_FILENO, &tt);
    tt_orig = tt.c_lflag;
    tt.c_lflag &= ~(ICANON | ECHO);
@@ -466,6 +597,11 @@ errReturn:
    
    if (conf.gpio_fd >= 0)
       ambitv_gpio_close_button_irq(conf.gpio_fd, conf.gpio_idx);
+   
+   if (http_backend) {
+      http_free(http_backend);
+      http_backend = NULL;
+   }
    
    return ret;
 }

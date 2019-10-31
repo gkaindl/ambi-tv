@@ -34,7 +34,10 @@ struct ambitv_any_component {
    char*    name;
    void*    priv;
    int      active;
+   
    void(*f_print_configuration)(void*);
+   int (*f_provide_keypairs)(struct ambitv_any_component*, void* ctx, int (*f)(const char*, int, const char*, void*));
+   int (*f_receive_keypair)(struct ambitv_any_component*, const char*, const char*);
 };
 
 void** ambitv_components;
@@ -76,6 +79,109 @@ ambitv_component_print_configuration(void* component)
    
    if (any_component->f_print_configuration)
       any_component->f_print_configuration(component);
+}
+
+#define KEYPAIR_CTX_BUFSIZE      64
+
+struct keypair_ctx {
+   void* forwarded_ctx;
+   char* name;
+   char buf[KEYPAIR_CTX_BUFSIZE];
+   int (*handle_keypair)(const char*, int, const char*, void*);
+};
+
+static int
+ambit_tv_component_handle_keypair(
+   const char* name, int value_int, const char* value_str, void* cctx
+) {
+   int res = -1;
+   struct keypair_ctx* ctx = (struct keypair_ctx*)cctx;
+   
+   if (ctx && name) {
+      int comp_len, name_len;
+      
+      comp_len = strlen(ctx->name);
+      name_len = strlen(name);
+      
+      if (comp_len + name_len + 2 < KEYPAIR_CTX_BUFSIZE) {
+         snprintf(
+            ctx->buf,
+            KEYPAIR_CTX_BUFSIZE-1,
+            "%s:%s",
+            ctx->name,
+            name
+         );
+            
+         ctx->buf[KEYPAIR_CTX_BUFSIZE-1] = 0;
+         
+         ctx->handle_keypair(
+            ctx->buf,
+            value_int,
+            value_str,
+            ctx->forwarded_ctx
+         );
+            
+         res = 0;
+      }
+   }
+   
+   return res;
+}
+
+int
+ambitv_component_provide_all_keypairs(
+   void* ctx,
+   int (*handle_keypair)(const char*, int, const char*, void*)
+)
+{
+   int i, res;
+   struct keypair_ctx k_ctx;
+   struct ambitv_any_component* component;
+   
+   if (!handle_keypair) {
+      return -1;
+   }
+   
+   k_ctx.forwarded_ctx  = ctx;
+   k_ctx.handle_keypair = handle_keypair;
+   
+   for (i=0; i<ambitv_num_components; i++) {
+      component = ambitv_components[i];
+      
+      if (component->f_provide_keypairs) {
+         k_ctx.name = component->name;
+         
+         res = component->f_provide_keypairs(
+            component,
+            &k_ctx,
+            ambit_tv_component_handle_keypair
+         );
+         
+         if (res) {
+            return res;
+         }
+      }
+   }
+   
+   return 0;
+}
+
+int
+ambitv_component_receive_keypair(
+   void* component, const char* name, const char* value
+) {
+   int res = -1;
+   
+   if (component) {
+      struct ambitv_any_component* c =
+         (struct ambitv_any_component*)component;
+      
+      if (c->f_receive_keypair) {
+         res = c->f_receive_keypair(c, name, value);
+      }
+   }
+   
+   return res;
 }
 
 static void*

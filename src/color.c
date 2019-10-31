@@ -61,33 +61,38 @@ ambitv_color_map_with_lut(unsigned char* lut, unsigned char color_component)
 }
 
 void
-ambitv_hsl_to_rgb(int hue, int sat, int lum, int* r, int* g, int* b)
+ambitv_hsv_to_rgb(int hue, int sat, int val, int* r, int* g, int* b)
 {
-    int v;
-
-    v = (lum < 128) ? (lum * (256 + sat)) >> 8 :
-          (((lum + sat) << 8) - lum * sat) >> 8;
-    if (v <= 0) {
+    if (val <= 0) {
         *r = *g = *b = 0;
     } else {
         int m;
         int sextant;
         int fract, vsf, mid1, mid2;
 
-        m = lum + lum - v;
+        m = val * (255 - sat) >> 8;
         hue *= 6;
         sextant = hue >> 8;
         fract = hue - (sextant << 8);
-        vsf = v * fract * (v - m) / v >> 8;
+        vsf = val * fract * (val - m) / val >> 8;
         mid1 = m + vsf;
-        mid2 = v - vsf;
+        mid2 = val - vsf;
         switch (sextant) {
-           case 0: *r = v; *g = mid1; *b = m; break;
-           case 1: *r = mid2; *g = v; *b = m; break;
-           case 2: *r = m; *g = v; *b = mid1; break;
-           case 3: *r = m; *g = mid2; *b = v; break;
-           case 4: *r = mid1; *g = m; *b = v; break;
-           case 5: *r = v; *g = m; *b = mid2; break;
+           case 0: *r = val; *g = mid1; *b = m; break;
+           case 1: *r = mid2; *g = val; *b = m; break;
+           case 2: *r = m; *g = val; *b = mid1; break;
+           case 3: *r = m; *g = mid2; *b = val; break;
+           case 4: *r = mid1; *g = m; *b = val; break;
+           case 5: *r = val; *g = m; *b = mid2; break;
         }
     }
+}
+
+void
+ambitv_hsl_to_rgb(int hue, int sat, int lum, int* r, int* g, int* b)
+{
+   int val = (lum < 128) ? (lum * (256 + sat)) >> 8 :
+      (((lum + sat) << 8) - lum * sat) >> 8;
+   
+   ambitv_hsv_to_rgb(hue, sat, val, r, g, b);
 }

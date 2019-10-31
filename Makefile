@@ -17,17 +17,18 @@
 # along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-CFLAGS = -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -Wall
+CFLAGS = -O3 -mcpu=native -march=native -mfpu=vfp -mfloat-abi=hard -Wall
 LDFLAGS = -lpthread -lm
 
 AMBITV = ambi-tv
-SRC_AMBITV = src/main.c src/video-fmt.c src/parse-conf.c src/component.c   \
+SRC_AMBITV = src/main.c src/video-fmt.c src/parse-conf.c src/component.c  \
 	src/registrations.c src/util.c src/program.c src/log.c src/color.c      \
-	src/gpio.c                                                              \
+	src/gpio.c src/http.c                                                   \
 	src/components/v4l2-grab-source.c src/components/avg-color-processor.c  \
 	src/components/lpd8806-spidev-sink.c src/components/timer-source.c      \
 	src/components/edge-color-processor.c                                   \
-	src/components/mood-light-processor.c
+	src/components/mood-light-processor.c                                   \
+  src/components/color-lamp-processor.c
 OBJ_AMBITV = $(SRC_AMBITV:.c=.o)
 
 dir=@mkdir -p bin
