@@ -239,7 +239,7 @@ ambitv_handle_http_backend_keypair(
       }
       
       default: {
-         char* pos = strchr(name, (int)':');
+         char* pos = strchr(name, (int)'~');
          
          if (pos) {
             char* valname = (pos+1);
@@ -251,7 +251,7 @@ ambitv_handle_http_backend_keypair(
                value
             );
                
-            *pos = ':';
+            *pos = '~';
          }
          
          break;

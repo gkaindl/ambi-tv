@@ -107,7 +107,7 @@ ambit_tv_component_handle_keypair(
          snprintf(
             ctx->buf,
             KEYPAIR_CTX_BUFSIZE-1,
-            "%s:%s",
+            "%s~%s",
             ctx->name,
             name
          );
