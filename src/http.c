@@ -207,6 +207,7 @@ send_http_reply(connection* c, int status)
       "Server: ambi-tv API\r\n"
       "Connection: close\r\n"
       "Cache-Control: no-cache\r\n"
+      "Content-Type: application/json\r\n"
       "\r\n"
       "{ \"success\" : \"%s\", \"status\" : \"%d\", \"message\" : \"%s\""
       "%s}\r\n",
@@ -399,10 +400,6 @@ handle_server_fd(http* server, fd_set* read_fds)
          } else {
             close(client_fd);
          }
-         
-         ambitv_log(ambitv_log_info,
-            LOGNAME "new tcp connection from %s:%u\n",
-               inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
       }
    }
 }
