@@ -262,7 +262,7 @@ ambitv_handle_http_backend_keypair(
 }
 
 static int
-ambitv_runloop()
+ambitv_runloop(int is_tty)
 {
    int ret = 0, max_fd = -1;
    unsigned char c = 0;
@@ -270,11 +270,16 @@ ambitv_runloop()
    struct timeval tv;
    
    FD_ZERO(&read_fds); FD_ZERO(&write_fds); FD_ZERO(&ex_fds);
-   FD_SET(STDIN_FILENO, &read_fds);
-   if (conf.gpio_fd >= 0)
-      FD_SET(conf.gpio_fd, &ex_fds);
    
-   max_fd = MAX(STDIN_FILENO, conf.gpio_fd);
+   if (conf.gpio_fd >= 0) {
+      FD_SET(conf.gpio_fd, &ex_fds);
+      max_fd = conf.gpio_fd;
+   }
+   
+   if (is_tty) {
+      FD_SET(STDIN_FILENO, &read_fds);
+      max_fd = MAX(STDIN_FILENO, conf.gpio_fd);
+   }
    
    if (http_backend) {
       max_fd = http_fill_fd_sets(http_backend, &read_fds, &write_fds, max_fd);
@@ -295,7 +300,7 @@ ambitv_runloop()
       goto finishLoop;
    }
    
-   if (FD_ISSET(STDIN_FILENO, &read_fds)) {
+   if (is_tty && FD_ISSET(STDIN_FILENO, &read_fds)) {
       ret = read(STDIN_FILENO, &c, 1);
       
       if (ret < 0) {
@@ -559,7 +564,7 @@ ambitv_print_main_configuration()
 int
 main(int argc, char** argv)
 {
-   int ret = 0, i;
+   int ret = 0, i, is_tty = 0;
    struct ambitv_conf_parser* parser;
    struct termios tt;
    unsigned long tt_orig;
@@ -645,10 +650,14 @@ main(int argc, char** argv)
       http_set_keypair_callback(http_backend, ambitv_handle_http_backend_keypair);
    }
    
-   tcgetattr(STDIN_FILENO, &tt);
-   tt_orig = tt.c_lflag;
-   tt.c_lflag &= ~(ICANON | ECHO);
-   tcsetattr(STDIN_FILENO, TCSANOW, &tt);
+   is_tty = isatty(STDIN_FILENO);
+   
+   if (is_tty) {
+     tcgetattr(STDIN_FILENO, &tt);
+     tt_orig = tt.c_lflag;
+     tt.c_lflag &= ~(ICANON | ECHO);
+     tcsetattr(STDIN_FILENO, TCSANOW, &tt);
+   }
    
    if (conf.program_idx >= ambitv_num_programs) {
       ambitv_log(ambitv_log_error, LOGNAME "program at index %d requested, but only %d programs available. aborting...\n",
@@ -672,7 +681,9 @@ main(int argc, char** argv)
    ambitv_log(ambitv_log_info, LOGNAME "started initial program '%s'.\n",
       ambitv_programs[conf.cur_prog]->name);
    
-   fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL) | O_NONBLOCK);
+   if (is_tty) { 
+     fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL) | O_NONBLOCK);
+   }
    
    ambitv_log(ambitv_log_info,
       LOGNAME "************* start-up complete\n"
@@ -683,7 +694,7 @@ main(int argc, char** argv)
          "\tphysical (gpio) button: click to pause/resume, double-click to cycle between programs.\n");
    }
    
-   while (conf.running && ambitv_runloop() >= 0);
+   while (conf.running && ambitv_runloop(is_tty) >= 0);
    
    ret = ambitv_program_stop_current();
    
@@ -693,9 +704,11 @@ main(int argc, char** argv)
       goto errReturn;
    }
 
-errReturn:   
-   tt.c_lflag = tt_orig;
-   tcsetattr(STDIN_FILENO, TCSANOW, &tt);
+errReturn:
+   if (is_tty) {
+     tt.c_lflag = tt_orig;
+     tcsetattr(STDIN_FILENO, TCSANOW, &tt);
+   }
    
    if (conf.gpio_fd >= 0)
       ambitv_gpio_close_button_irq(conf.gpio_fd, conf.gpio_idx);
