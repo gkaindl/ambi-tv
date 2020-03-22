@@ -412,6 +412,7 @@ ambitv_usage(const char* name)
       "\t-f/--file [path]         use the configuration file at [path] (default: %s).\n"
       "\t-h,--help                display this help text.\n"
       "\t-p,--program [i]         run the [i]-th program from the configuration file on start-up.\n"
+      "\t-o,--on 0|1              define whether the selected program starts active (1, default) or paused (0).\n"
       "\t-s,--http_backend [0|1]  enable or disable the http api backend (0 to disable, 1 to enable)\n"
       "\t-a,--http_address [ip]   optionally specifiy a local IP address for the http backend, like 127.0.0.1\n"
       "\t-l,--http_port [port]    specify a listening port for the http backend. defaults to %u\n"
@@ -432,6 +433,7 @@ ambitv_main_configure(int argc, char** argv, int from_file)
       { "file", required_argument, 0, 'f' },
       { "help", no_argument, 0, 'h' },
       { "program", required_argument, 0, 'p' },
+      { "on", required_argument, 0, 'o' },
       { "http_backend", required_argument, 0, 's' },
       { "http_address", required_argument, 0, 'a' },
       { "http_port", required_argument, 0, 'l' },
@@ -439,7 +441,7 @@ ambitv_main_configure(int argc, char** argv, int from_file)
    };
 
    while (1) {      
-      c = getopt_long(argc, argv, "b:f:hp:", lopts, NULL);
+      c = getopt_long(argc, argv, "o:b:f:hp:", lopts, NULL);
 
       if (c < 0)
          break;
@@ -469,7 +471,8 @@ ambitv_main_configure(int argc, char** argv, int from_file)
          case 'b':
          case 'p':
          case 's':
-         case 'l': {
+         case 'l':
+         case 'o': {
             if (NULL != optarg) {
                char* eptr = NULL;
                int valid = 0;
@@ -492,6 +495,12 @@ ambitv_main_configure(int argc, char** argv, int from_file)
                      case 's':
                         if (0 == nbuf || 1 == nbuf) { 
                            conf.http_on = (int)nbuf;
+                           valid = 1;
+                        }
+                        break;
+                     case 'o':
+                        if (0 == nbuf || 1 == nbuf) { 
+                           conf.ambitv_on = (int)nbuf;
                            valid = 1;
                         }
                         break;
@@ -670,7 +679,7 @@ main(int argc, char** argv)
    printf("ambitv configuration:\n");
    ambitv_print_main_configuration();
    
-   ret = ambitv_program_run(ambitv_programs[conf.cur_prog]);
+   ret = ambitv_select_program(conf.cur_prog);
    
    if (ret < 0) {
       ambitv_log(ambitv_log_error, LOGNAME "failed to start initial program '%s', aborting...\n",
