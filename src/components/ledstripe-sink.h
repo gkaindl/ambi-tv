@@ -17,12 +17,12 @@
 *  along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __AMBITV_LPD8806_SPIDEV_SINK_H__
-#define __AMBITV_LPD8806_SPIDEV_SINK_H__
+#ifndef __AMBITV_LEDSTRIPE_SINK_H__
+#define __AMBITV_LEDSTRIPE_SINK_H__
 
 #include "../component.h"
 
 struct ambitv_sink_component*
-ambitv_lpd8806_create(const char* name, int argc, char** argv);
+ambitv_ledstripe_create(const char* name, int argc, char** argv);
 
-#endif // __AMBITV_LPD8806_SPIDEV_SINK_H__
+#endif // __AMBITV_LEDSTRIPE_SINK_H__

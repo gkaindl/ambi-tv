@@ -314,7 +314,6 @@ ambitv_conf_parser_read_config_file(struct ambitv_conf_parser* parser, const cha
          ret = -1;
          goto close_and_finish;
       }
-      
       ret = ambitv_conf_parser_process_line(parser, line);
       if (ret < 0)
          goto close_and_finish;

@@ -1,0 +1,210 @@
+#!/bin/sh
+
+# Script to communicate from linux receivers to ambi-tv on Raspi via socket
+# Plugins shellexec and msgbox are necessary
+# make this entry in shellexecs menufile 'ACTION=&Ambilight-Steuerung,/var/plugins/ambi-tv-config [IP-and-port-of-raspi]'
+# Copyright (C) 2015 by SnowHead
+
+# configure IP and socket port of RASPI here if not done by call
+[ -z "$1" ] && RASPI=192.168.0.117:16384 || RASPI="$1"
+
+SMOOTH_FALLOFF=1
+SMOOTH_AVERAGE=2
+SMOOTH_INTEGRAL=4
+
+MENUFILE="/tmp/ambilight.mnu"
+TEMPFILE="/tmp/ambilight.tmp"
+SMOOTHFILE="/tmp/.ambismooth_"
+LINEARFILE="/tmp/.ambilinear"
+
+dogamma=""
+dointensity=""
+
+case "$2" in
+"asensitivity")
+	sensitivity=`wget -q -Y off -O- http://$RASPI?sensitivity=`
+	sensitivity=`input l="###%" t="Empfindlichkeit" d=$sensitivity`;
+	if [ $sensitivity -ge 0 -a $sensitivity -le 1000 ]
+	then
+		wget -q -Y off -O /dev/null "http://$RASPI?sensitivity=$sensitivity"
+	fi
+;;
+
+"asmoothing")
+	parm=$3
+	if smoothing=`wget -q -Y off -O- http://$RASPI?smoothing=`
+	then
+		smoothing=$(($smoothing^$parm))
+		[ $(($smoothing&$parm)) -gt 0 ] && touch $SMOOTHFILE$parm || rm -f $SMOOTHFILE$parm
+		wget -q -Y off -O /dev/null "http://$RASPI?smoothing=$smoothing"
+	fi
+;;
+
+"alinear")
+	if linear=`wget -q -Y off -O- http://$RASPI?linear=`
+	then
+		linear=$(($linear^1))
+		[ $linear -gt 0 ] && touch $LINEARFILE || rm -f $LINEARFILE
+		wget -q -Y off -O /dev/null "http://$RASPI?linear=$linear"
+	fi
+;;
+
+"bright")
+	brightness=`wget -q -Y off -O- http://$RASPI?brightness=`
+	brightness=`input l="###%" t="Helligkeit" d=$brightness`;
+	if [ $brightness -ge 0 -a $brightness -le 100 ]
+	then
+		wget -q -Y off -O /dev/null "http://$RASPI?brightness=$brightness"
+	fi
+;;
+
+"ired")
+	dointensity=`expr substr $2 2 10`
+;;
+
+"igreen")
+	dointensity=`expr substr $2 2 10`
+;;
+
+"iblue")
+	dointensity=`expr substr $2 2 10`
+;;
+
+"imred")
+	dointensity_min=`expr substr $2 2 10`
+;;
+
+"imgreen")
+	dointensity_min=`expr substr $2 2 10`
+;;
+
+"imblue")
+	dointensity_min=`expr substr $2 2 10`
+;;
+
+"gred")
+	dogamma=`expr substr $2 2 10`
+;;
+
+"ggreen")
+	dogamma=`expr substr $2 2 10`
+;;
+
+"gblue")
+	dogamma=`expr substr $2 2 10`
+;;
+
+*)
+	program=0
+
+	wget -q -O- http://$RASPI?getconfig | sed -e s/'<br>'//g -e s/"\t"/' '/g -e s/'  '*/' '/g > $TEMPFILE
+	if ! grep program $TEMPFILE > /dev/null
+	then
+		msgbox title="Ambilight-Steuerung" msg="~RFehler!~S Raspberry antwortet nicht" 
+		exit 0 
+	fi
+
+	if smoothing=`wget -q -Y off -O- http://$RASPI?smoothing=`
+	then
+		hasaudio=3
+		for i in $SMOOTH_FALLOFF $SMOOTH_AVERAGE $SMOOTH_INTEGRAL
+		do
+			[ $(($smoothing&$i)) -gt 0 ] && touch $SMOOTHFILE$i || rm -f $SMOOTHFILE$i
+		done
+		if linear=`wget -q -Y off -O- http://$RASPI?linear=`
+		then
+			[ $linear -eq 1 ] && touch $LINEARFILE || rm -f $LINEARFILE
+		fi
+	else
+		hasaudio=0
+		smoothing=0
+	fi
+
+	echo WIDTH=440 > $MENUFILE
+	echo HIGHT=500 >> $MENUFILE
+	echo LINESPP=$((12+$hasaudio)) >> $MENUFILE
+	echo FONTSIZE=24 >> $MENUFILE
+	echo MENU=Ambilight-Steuerung >> $MENUFILE
+	echo COMMENT=!Ambilight-Modus >> $MENUFILE
+	cat $TEMPFILE | grep ^\& | sed s/^\&// | while read line
+	do
+		if echo $line | grep '#' > /dev/null
+		then
+			title=`echo $line | cut -d'#' -f2`
+		else
+			title=`echo $line | cut -d' ' -f1 | sed s/program_//`
+		fi
+		echo ACTION=\&"$title",wget -q -Y off -O /dev/null "http://$RASPI?mode=$program" >> $MENUFILE
+		program=$(($program+1))
+	done
+	echo ACTION=\&Ausschalten,wget -q -Y off -O /dev/null "http://$RASPI?mode=X" >> $MENUFILE
+	echo COMMENT=!Ambilight-Parameter >> $MENUFILE
+	echo ACTION=\&"Helligkeit einstellen","$0 $RASPI bright" >> $MENUFILE
+	echo MENU=Farbeinstellungen >> $MENUFILE
+	echo ACTION=\&"Intensit~at Rot","$0 $RASPI ired" >> $MENUFILE
+	echo ACTION=\&"Intensit~at Gr~un","$0 $RASPI igreen" >> $MENUFILE
+	echo ACTION=\&"Intensit~at Blau","$0 $RASPI iblue" >> $MENUFILE
+	echo COMMENT=! >> $MENUFILE
+	echo ACTION=\&"Minimalintensit~at Rot","$0 $RASPI imred" >> $MENUFILE
+	echo ACTION=\&"Minimalintensit~at Gr~un","$0 $RASPI imgreen" >> $MENUFILE
+	echo ACTION=\&"Minimalintensit~at Blau","$0 $RASPI imblue" >> $MENUFILE
+	echo COMMENT=! >> $MENUFILE
+	echo ACTION=\&"Gammawert Rot","$0 $RASPI gred" >> $MENUFILE
+	echo ACTION=\&"Gammawert Gr~un","$0 $RASPI ggreen" >> $MENUFILE
+	echo ACTION=\&"Gammawert Blau","$0 $RASPI gblue" >> $MENUFILE
+	echo ENDMENU >> $MENUFILE
+	if [ $hasaudio -gt 0 ]
+	then
+		echo MENU=Audioeinstellungen >> $MENUFILE
+		echo ACTION=\&"Empfindlichkeit","$0 $RASPI asensitivity" >> $MENUFILE
+		echo MENU=Filter >> $MENUFILE
+			echo DEPENDON=\&"Falloff~t~t~t~t~t~tein","$0 $RASPI asmoothing $SMOOTH_FALLOFF","$SMOOTHFILE"1 >> $MENUFILE
+			echo DEPENDOFF=\&"Falloff~t~t~t~t~t~taus","$0 $RASPI asmoothing $SMOOTH_FALLOFF","$SMOOTHFILE"1 >> $MENUFILE
+			echo DEPENDON=\&"Average~t~t~t~t~t~tein","$0 $RASPI asmoothing $SMOOTH_AVERAGE","$SMOOTHFILE"2 >> $MENUFILE
+			echo DEPENDOFF=\&"Average~t~t~t~t~t~taus","$0 $RASPI asmoothing $SMOOTH_AVERAGE","$SMOOTHFILE"2 >> $MENUFILE
+			echo DEPENDON=\&"Integral~t~t~t~t~t~tein","$0 $RASPI asmoothing $SMOOTH_INTEGRAL","$SMOOTHFILE"4 >> $MENUFILE
+			echo DEPENDOFF=\&"Integral~t~t~t~t~t~taus","$0 $RASPI asmoothing $SMOOTH_INTEGRAL","$SMOOTHFILE"4 >> $MENUFILE
+		echo ENDMENU >> $MENUFILE
+		echo DEPENDON=\&"Linear~t~t~t~t~t~tein","$0 $RASPI alinear","$LINEARFILE" >> $MENUFILE
+		echo DEPENDOFF=\&"Linear~t~t~t~t~t~taus","$0 $RASPI alinear","$LINEARFILE" >> $MENUFILE
+		echo ENDMENU >> $MENUFILE
+	fi 
+	echo ENDMENU >> $MENUFILE
+	rm $TEMPFILE
+	shellexec $MENUFILE
+	rm $MENUFILE
+;;
+esac
+
+if [ ! -z $dogamma ]
+then
+	gval=`wget -q -Y off -O- http://$RASPI?gamma-"$dogamma"= | sed -e s/'\.'//`
+	gval=`input l=#.## t="Gammawert" d=$gval`;
+	if [ $gval -ge 000 -a $gval -le 999 ]
+	then
+		gfval=`expr substr $gval 1 1`.`expr substr $gval 2 2`
+		wget -q -Y off -O /dev/null "http://$RASPI?gamma-$dogamma=$gfval"
+	fi
+fi
+
+if [ ! -z $dointensity ]
+then
+	ival=`wget -q -Y off -O- http://$RASPI?intensity-"$dointensity"=`
+	ival=`input l="###%" t="Intensit~at" d=$ival`;
+	if [ $ival -ge 0 -a $ival -le 100 ]
+	then
+		wget -q -Y off -O /dev/null "http://$RASPI?intensity-$dointensity=$ival"
+	fi
+fi
+
+if [ ! -z $dointensity_min ]
+then
+	ival=`wget -q -Y off -O- http://$RASPI?intensity-min-"$dointensity"=`
+	ival=`input l="###%" t="Minimalintensit~at" d=$ival`;
+	if [ $ival -ge 0 -a $ival -le 100 ]
+	then
+		wget -q -Y off -O /dev/null "http://$RASPI?intensity-min-$dointensity=$ival"
+	fi
+fi
+
+exit 0
