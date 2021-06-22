@@ -29,6 +29,9 @@
 
 #define LOGNAME      "video-fmt: "
 #define CROP_LIMIT	5
+#define scrop_blend_1  	25
+#define scrop_blend_2  	(scrop_blend_1 - 1)
+#define SMOOTH_CROP		1
 
 const char* v4l2_string_from_fourcc(uint32_t fourcc)
 {
@@ -40,6 +43,10 @@ const char* v4l2_string_from_fourcc(uint32_t fourcc)
 	s[4] = 0;
 	return s;
 }
+
+#if SMOOTH_CROP
+static uint32_t scrop[4] = { 0 };
+#endif
 
 enum ambitv_video_format v4l2_to_ambitv_video_format(uint32_t fourcc)
 {
@@ -133,6 +140,7 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 {
 	int ret = -1;
 	int tcnt;
+	register int ival, iival;
 
 	if (NULL != pixbuf && NULL != crop)
 	{
@@ -170,7 +178,12 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 				{
 					if(++tcnt > CROP_LIMIT)
 					{
-						crop[3] = i >> 1;
+						ival = i >> 1;
+#if SMOOTH_CROP
+						scrop[3] = ((scrop_blend_2 * scrop[3]) / scrop_blend_1) + ival;
+						iival = (int)(scrop[3] / scrop_blend_1) + 1;
+#endif
+						crop[3] = ival;
 						goto left_done;
 					}
 				}
@@ -192,7 +205,12 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 				{
 					if(++tcnt > CROP_LIMIT)
 					{
-						crop[1] = (w * 2 - i) >> 1;
+						ival = (w * 2 - i) >> 1;
+#if SMOOTH_CROP
+						scrop[1] = ((scrop_blend_2 * scrop[1]) / scrop_blend_1) + ival;
+						iival = (int)(scrop[1] / scrop_blend_1) + 1;
+#endif
+						crop[1] = iival;
 						goto right_done;
 					}
 				}
@@ -214,7 +232,12 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 				{
 					if(++tcnt > CROP_LIMIT)
 					{
-						crop[0] = i;
+						ival = i;
+#if SMOOTH_CROP
+						scrop[0] = ((scrop_blend_2 * scrop[0]) / scrop_blend_1) + ival;
+						ival = (int)(scrop[0] / scrop_blend_1) + 1;
+#endif
+						crop[0] = ival;
 						goto top_done;
 					}
 				}
@@ -236,7 +259,12 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 				{
 					if(++tcnt > CROP_LIMIT)
 					{
-						crop[2] = h - i;
+						ival = h - i;
+#if SMOOTH_CROP
+						scrop[2] = ((scrop_blend_2 * scrop[2]) / scrop_blend_1) + ival;
+						ival = (int)(scrop[2] / scrop_blend_1) + 1;
+#endif
+						crop[2] = ival;
 						goto bottom_done;
 					}
 				}
@@ -244,7 +272,9 @@ static int ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4],
 		}
 
 		bottom_done:
-
+#if SMOOTH_CROP
+//printf("%6d, %6d, %6d, %6d,   %6d, %6d, %6d, %6d\n", crop[0], crop[1], crop[2], crop[3], scrop[0], scrop[1], scrop[2], scrop[3]);
+#endif
 		ret = 0;
 	}
 
