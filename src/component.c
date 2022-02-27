@@ -29,36 +29,36 @@
 
 #define LOGNAME   "component: "
 
-struct ambitv_any_component {
-   enum ambitv_component_type type;
+struct wordclock_any_component {
+   enum wordclock_component_type type;
    char*    name;
    void*    priv;
    int      active;
    void(*f_print_configuration)(void*);
 };
 
-void** ambitv_components;
-static int ambitv_len_components, ambitv_num_components;
+void** wordclock_components;
+static int wordclock_len_components, wordclock_num_components;
 
 int
-ambitv_component_enable(void* component)
+wordclock_component_enable(void* component)
 {
-   ambitv_num_components = ambitv_util_append_ptr_to_list(
-      &ambitv_components,
-      ambitv_num_components,
-      &ambitv_len_components,
+   wordclock_num_components = wordclock_util_append_ptr_to_list(
+      &wordclock_components,
+      wordclock_num_components,
+      &wordclock_len_components,
       component);
    
    return 0;
 }
 
 void*
-ambitv_component_find_by_name(const char* name)
+wordclock_component_find_by_name(const char* name)
 {
    int i;
-   struct ambitv_any_component* component;
-   for (i=0; i<ambitv_num_components; i++) {
-      component = ambitv_components[i];
+   struct wordclock_any_component* component;
+   for (i=0; i<wordclock_num_components; i++) {
+      component = wordclock_components[i];
       if (0 == strcmp(component->name, name))
          return (void*)component;
    }
@@ -67,12 +67,12 @@ ambitv_component_find_by_name(const char* name)
 }
 
 void*
-ambitv_component_find_in_group(const char* name, int active)
+wordclock_component_find_in_group(const char* name, int active)
 {
    int i;
-   struct ambitv_any_component* component;
-   for (i=0; i<ambitv_num_components; i++) {
-      component = ambitv_components[i];
+   struct wordclock_any_component* component;
+   for (i=0; i<wordclock_num_components; i++) {
+      component = wordclock_components[i];
       if (strstr(component->name, name) && ((!active) || (active && component->active)))
          return (void*)component;
    }
@@ -81,20 +81,20 @@ ambitv_component_find_in_group(const char* name, int active)
 }
 
 void
-ambitv_component_print_configuration(void* component)
+wordclock_component_print_configuration(void* component)
 {
-   struct ambitv_any_component* any_component =
-      (struct ambitv_any_component*)component;
+   struct wordclock_any_component* any_component =
+      (struct wordclock_any_component*)component;
    
    if (any_component->f_print_configuration)
       any_component->f_print_configuration(component);
 }
 
 static void*
-ambitv_source_component_thread_main(void* arg)
+wordclock_source_component_thread_main(void* arg)
 {
-   struct ambitv_source_component* component =
-      (struct ambitv_source_component*)arg;
+   struct wordclock_source_component* component =
+      (struct wordclock_source_component*)arg;
    
    while(component->active) {
       if (NULL != component->f_run)
@@ -107,7 +107,7 @@ ambitv_source_component_thread_main(void* arg)
 }
 
 static int
-ambitv_source_component_activate(struct ambitv_source_component* component)
+wordclock_source_component_activate(struct wordclock_source_component* component)
 {
    int ret = 0;
    
@@ -132,7 +132,7 @@ ambitv_source_component_activate(struct ambitv_source_component* component)
       ret = pthread_create(
          &component->thread,
          &attr,
-         ambitv_source_component_thread_main,
+         wordclock_source_component_thread_main,
          (void*)component); 
       
       pthread_attr_destroy(&attr);
@@ -148,14 +148,15 @@ errReturn:
 }
 
 static int
-ambitv_processor_component_activate(struct ambitv_processor_component* component)
+wordclock_processor_component_activate(struct wordclock_processor_component* component)
 {
    component->active = 1;
+   component->first_run = 1;
    return 0;
 }
 
 static int
-ambitv_sink_component_activate(struct ambitv_sink_component* component)
+wordclock_sink_component_activate(struct wordclock_sink_component* component)
 {
    int ret = 0;
    
@@ -178,7 +179,7 @@ errReturn:
 }
 
 static int
-ambitv_source_component_deactivate(struct ambitv_source_component* component)
+wordclock_source_component_deactivate(struct wordclock_source_component* component)
 {
    int ret = 0;
 
@@ -203,14 +204,14 @@ errReturn:
 }
 
 static int
-ambitv_processor_component_deactivate(struct ambitv_processor_component* component)
+wordclock_processor_component_deactivate(struct wordclock_processor_component* component)
 {
    component->active = 0;
    return 0;
 }
 
 static int
-ambitv_sink_component_deactivate(struct ambitv_sink_component* component)
+wordclock_sink_component_deactivate(struct wordclock_sink_component* component)
 {
    int ret = 0;
    
@@ -225,28 +226,28 @@ ambitv_sink_component_deactivate(struct ambitv_sink_component* component)
 }
 
 int
-ambitv_component_activate(void* component)
+wordclock_component_activate(void* component)
 {
    int ret = -1;
    
-   struct ambitv_any_component* any_component =
-      (struct ambitv_any_component*)component;
+   struct wordclock_any_component* any_component =
+      (struct wordclock_any_component*)component;
    
-   ambitv_log(ambitv_log_info, LOGNAME "activating component '%s'...\n",
+   wordclock_log(wordclock_log_info, LOGNAME "activating component '%s'...\n",
       any_component->name);
    
    switch(any_component->type) {
-      case ambitv_component_type_source:
-         ret = ambitv_source_component_activate(
-            (struct ambitv_source_component*)component);
+      case wordclock_component_type_source:
+         ret = wordclock_source_component_activate(
+            (struct wordclock_source_component*)component);
          break;
-      case ambitv_component_type_processor:
-         ret = ambitv_processor_component_activate(
-            (struct ambitv_processor_component*)component);
+      case wordclock_component_type_processor:
+         ret = wordclock_processor_component_activate(
+            (struct wordclock_processor_component*)component);
          break;
-      case ambitv_component_type_sink:
-         ret = ambitv_sink_component_activate(
-            (struct ambitv_sink_component*)component);
+      case wordclock_component_type_sink:
+         ret = wordclock_sink_component_activate(
+            (struct wordclock_sink_component*)component);
          break;
       default:
          break;
@@ -256,28 +257,28 @@ ambitv_component_activate(void* component)
 }
 
 int
-ambitv_component_deactivate(void* component)
+wordclock_component_deactivate(void* component)
 {
    int ret = -1;
    
-   struct ambitv_any_component* any_component =
-      (struct ambitv_any_component*)component;
+   struct wordclock_any_component* any_component =
+      (struct wordclock_any_component*)component;
    
-   ambitv_log(ambitv_log_info, LOGNAME "deactivating component '%s'...\n",
+   wordclock_log(wordclock_log_info, LOGNAME "deactivating component '%s'...\n",
       any_component->name);
    
    switch(any_component->type) {
-      case ambitv_component_type_source:
-         ret = ambitv_source_component_deactivate(
-            (struct ambitv_source_component*)component);
+      case wordclock_component_type_source:
+         ret = wordclock_source_component_deactivate(
+            (struct wordclock_source_component*)component);
          break;
-      case ambitv_component_type_processor:
-         ret = ambitv_processor_component_deactivate(
-            (struct ambitv_processor_component*)component);
+      case wordclock_component_type_processor:
+         ret = wordclock_processor_component_deactivate(
+            (struct wordclock_processor_component*)component);
          break;
-      case ambitv_component_type_sink:
-         ret = ambitv_sink_component_deactivate(
-            (struct ambitv_sink_component*)component);
+      case wordclock_component_type_sink:
+         ret = wordclock_sink_component_deactivate(
+            (struct wordclock_sink_component*)component);
          break;
       default:
          break;
@@ -286,17 +287,17 @@ ambitv_component_deactivate(void* component)
    return ret;
 }
 
-struct ambitv_source_component*
-ambitv_source_component_create(const char* name)
+struct wordclock_source_component*
+wordclock_source_component_create(const char* name)
 {
-   struct ambitv_source_component* component;
+   struct wordclock_source_component* component;
    
-   component = (struct ambitv_source_component*)malloc(sizeof(struct ambitv_source_component));
+   component = (struct wordclock_source_component*)malloc(sizeof(struct wordclock_source_component));
    
    if (NULL != component) {
       memset(component, 0, sizeof(*component));
       
-      component->type = ambitv_component_type_source;
+      component->type = wordclock_component_type_source;
       component->name = strdup(name);
    }
    
@@ -304,30 +305,30 @@ ambitv_source_component_create(const char* name)
 }
 
 void
-ambitv_source_component_distribute_to_active_processors(
-   struct ambitv_source_component* compoment, void* frame_data, int width, int height, int bytesperline, enum ambitv_video_format fmt)
+wordclock_source_component_distribute_to_active_processors(
+   struct wordclock_source_component* compoment, void* frame_data, int width, int height, int bytesperline, int fmt)
 {
    int i, j;
    
-   for (i=0; i<ambitv_num_components; i++) {
-      struct ambitv_any_component* component =
-         (struct ambitv_any_component*)ambitv_components[i];
+   for (i=0; i<wordclock_num_components; i++) {
+      struct wordclock_any_component* component =
+         (struct wordclock_any_component*)wordclock_components[i];
       
-      if (ambitv_component_type_processor == component->type) {
-         struct ambitv_processor_component* processor =
-            (struct ambitv_processor_component*)component;
+      if (wordclock_component_type_processor == component->type) {
+         struct wordclock_processor_component* processor =
+            (struct wordclock_processor_component*)component;
          
          if (processor->active && NULL != processor->f_consume_frame)
             (void)processor->f_consume_frame(processor, frame_data, width, height, bytesperline, fmt);
                   
          if (processor->active && NULL != processor->f_update_sink) {
-            for (j=0; j<ambitv_num_components; j++) {
-               struct ambitv_any_component* any_sink_component =
-                  (struct ambitv_any_component*)ambitv_components[j];
+            for (j=0; j<wordclock_num_components; j++) {
+               struct wordclock_any_component* any_sink_component =
+                  (struct wordclock_any_component*)wordclock_components[j];
                
-               if (ambitv_component_type_sink == any_sink_component->type) {
-                  struct ambitv_sink_component* sink =
-                     (struct ambitv_sink_component*)any_sink_component;
+               if (wordclock_component_type_sink == any_sink_component->type) {
+                  struct wordclock_sink_component* sink =
+                     (struct wordclock_sink_component*)any_sink_component;
                   
                   if (sink->active)
                      (void)processor->f_update_sink(processor, sink);
@@ -339,7 +340,7 @@ ambitv_source_component_distribute_to_active_processors(
 }
 
 void
-ambitv_source_component_free(struct ambitv_source_component* component)
+wordclock_source_component_free(struct wordclock_source_component* component)
 {
    if (NULL != component) {
       if (NULL != component->name)
@@ -352,17 +353,17 @@ ambitv_source_component_free(struct ambitv_source_component* component)
    }
 }
 
-struct ambitv_processor_component*
-ambitv_processor_component_create(const char* name)
+struct wordclock_processor_component*
+wordclock_processor_component_create(const char* name)
 {
-   struct ambitv_processor_component* component;
+   struct wordclock_processor_component* component;
    
-   component = (struct ambitv_processor_component*)malloc(sizeof(struct ambitv_processor_component));
+   component = (struct wordclock_processor_component*)malloc(sizeof(struct wordclock_processor_component));
    
    if (NULL != component) {
       memset(component, 0, sizeof(*component));
       
-      component->type = ambitv_component_type_processor;
+      component->type = wordclock_component_type_processor;
       component->name = strdup(name);
    }
    
@@ -370,7 +371,7 @@ ambitv_processor_component_create(const char* name)
 }
 
 void
-ambitv_processor_component_free(struct ambitv_processor_component* component)
+wordclock_processor_component_free(struct wordclock_processor_component* component)
 {
    if (NULL != component) {
       if (NULL != component->name)
@@ -385,17 +386,17 @@ ambitv_processor_component_free(struct ambitv_processor_component* component)
 
 
 
-struct ambitv_sink_component*
-ambitv_sink_component_create(const char* name)
+struct wordclock_sink_component*
+wordclock_sink_component_create(const char* name)
 {
-   struct ambitv_sink_component* component;
+   struct wordclock_sink_component* component;
 
-   component = (struct ambitv_sink_component*)malloc(sizeof(struct ambitv_sink_component));
+   component = (struct wordclock_sink_component*)malloc(sizeof(struct wordclock_sink_component));
 
    if (NULL != component) {
       memset(component, 0, sizeof(*component));
 
-      component->type = ambitv_component_type_sink;
+      component->type = wordclock_component_type_sink;
       component->name = strdup(name);
    }
 
@@ -403,7 +404,7 @@ ambitv_sink_component_create(const char* name)
 }
 
 void
-ambitv_sink_component_free(struct ambitv_sink_component* component)
+wordclock_sink_component_free(struct wordclock_sink_component* component)
 {
    if (NULL != component) {
       if (NULL != component->name)

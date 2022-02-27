@@ -65,6 +65,10 @@ Wie oben schon angemerkt, muß bei Verwendung von WS281x-LED das 3,3V-Ausgangssig
 Das HDMI-Signal wird von der zentralen Quelle an den HDMI-Splitter geführt und von dort auf den Fernseher und unseren HDMI/Composite-Umsetzer aufgeteilt. Audio- und Videoausgänge des Umsetzers werden mit den zugehörigen Eingängen des USB-Grabbers verbunden, welcher im Raspberry steckt.  
 Leider kann der Umsetzer nur Stereo-PCM-Signale in ein für den Audio-Grabber verständliches Signal wandeln. Kommt über HDMI ein DTS-Digitalsignal, kann der Grabber mit dem Audiosignal des Umsetzers nichts anfangen. Wer also DTS-Sound nutzen möchte, sollte den Digitalausgang des Fernsehers auf PCM-Modus einstellen, dieses Signal mit dem oben aufgelisteten PCM/Analog-Wandler in ein für den Grabber nutzbares Signal umwandeln und dieses Signal statt des Umsetzer-Ausgangs verwenden. Der Fernseher übernimmt dabei die DTS-Decodierung und stellt gleichzeitig ein Signal mit konstanter Amplitude zur Verfügung.
 
+## Gehäuseteile
+
+Auf prusaprinters.org sind [3D-Modelle](https://www.prusaprinters.org/prints/140144-word-clock-german) verfügbar, mit welchen Gehäuse und Innenleben der Wordclock gedruckt werden können.
+
 ## Software Installation
 
 Bevor ambi-tv verwendet werden kann, werden für den Audio-Spektrum-Analyzer noch einige Bibliotheken und Tools benötigt. Diese kann man sich durch Eingabe von `'sudo apt-get install git libfftw3-dev libasound2-dev alsa-utils'` installieren.  
@@ -168,7 +172,8 @@ Im Moment unterstützt ambi-tv folgende Komponententypen mit ihren Einstellungen:
 - `speed`: Schrittweite, mit welcher der Farbraum durchgeschoben wird. In Verbindung mit dem "millis"-Parameter der Timerquelle ergibt sich so die Geschwindigkeit der Farbänderung.
 - `mode`: Legt die Art der Farbdarstellung fest
   * `0` bedeutet es wird ein diagonal über die Ecken verlaufendes Farbband angezeigt
-  * `1` bedeutet der ganze LED-Streifen wird in einer Farbe dargestellt, welche langsam das gesamte Spektrum durchläuft
+  * `1` bedeutet es wird ein den ganzen Bildschirm umlaufendes Farbband angezeigt
+  * `2` bedeutet der ganze LED-Streifen wird in einer Farbe dargestellt, welche langsam das gesamte Spektrum durchläuft
 
 **audio-processor**: Verarbeitet die erfaßten Audio-Daten mittels FFT und wandelt sie in Farben um.
 

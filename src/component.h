@@ -17,112 +17,111 @@
 *  along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __AMBITV_COMPONENT_H__
-#define __AMBITV_COMPONENT_H__
+#ifndef __WORDCLOCK_COMPONENT_H__
+#define __WORDCLOCK_COMPONENT_H__
 
 #include <pthread.h>
 
-#include "video-fmt.h"
-
-enum ambitv_component_type {
-   ambitv_component_type_source,
-   ambitv_component_type_processor,
-   ambitv_component_type_sink
+enum wordclock_component_type {
+   wordclock_component_type_source,
+   wordclock_component_type_processor,
+   wordclock_component_type_sink
 };
 
-struct ambitv_sink_component {
-   enum ambitv_component_type type;
+struct wordclock_sink_component {
+   enum wordclock_component_type type;
    char*    name;
    
    void*    priv;
    int      active;
 
-   void(*f_print_configuration)(struct ambitv_sink_component*);
-   int (*f_start_sink)(struct ambitv_sink_component*);
-   int (*f_stop_sink)(struct ambitv_sink_component*);
-   int (*f_num_outputs)(struct ambitv_sink_component*);
-   int (*f_map_output_to_point)(struct ambitv_sink_component*, int, int, int, int*, int*);
-   int (*f_set_output_to_rgb)(struct ambitv_sink_component*, int, int, int, int);
-   int (*f_commit_outputs)(struct ambitv_sink_component*);
-   void(*f_free_priv)(struct ambitv_sink_component*);
+   void(*f_print_configuration)(struct wordclock_sink_component*);
+   int (*f_start_sink)(struct wordclock_sink_component*);
+   int (*f_stop_sink)(struct wordclock_sink_component*);
+   int (*f_num_outputs)(struct wordclock_sink_component*);
+   int (*f_map_output_to_point)(struct wordclock_sink_component*, int, int, int, int*, int*);
+   int (*f_set_output_to_rgb)(struct wordclock_sink_component*, int, int, int, int);
+   int (*f_commit_outputs)(struct wordclock_sink_component*);
+   void(*f_free_priv)(struct wordclock_sink_component*);
 };
 
-struct ambitv_processor_component {
-   enum ambitv_component_type type;
+struct wordclock_processor_component {
+   enum wordclock_component_type type;
    char*    name;
 
    void*    priv;
    int      active;
+   int 		first_run;
 
-   void(*f_print_configuration)(struct ambitv_processor_component*);
+   void(*f_print_configuration)(struct wordclock_processor_component*);
    
-   int (*f_consume_frame)(struct ambitv_processor_component*, void*, int, int, int, int);
-   int (*f_update_sink)(struct ambitv_processor_component*, struct ambitv_sink_component*);
-   void(*f_free_priv)(struct ambitv_processor_component*);
+   int (*f_consume_frame)(struct wordclock_processor_component*, void*, int, int, int, int);
+   int (*f_update_sink)(struct wordclock_processor_component*, struct wordclock_sink_component*);
+   void(*f_free_priv)(struct wordclock_processor_component*);
 };
 
-struct ambitv_source_component {
-   enum ambitv_component_type type;
+struct wordclock_source_component {
+   enum wordclock_component_type type;
    char*          name;
    
    void*          priv;
    volatile int   active;
    
-   void(*f_print_configuration)(struct ambitv_source_component*);
+   void(*f_print_configuration)(struct wordclock_source_component*);
    
    pthread_t      thread;
    
-   int (*f_start_source)(struct ambitv_source_component*);
-   int (*f_run)(struct ambitv_source_component*);
-   int (*f_stop_source)(struct ambitv_source_component*);
-   void(*f_free_priv)(struct ambitv_source_component*);
+   int (*f_start_source)(struct wordclock_source_component*);
+   int (*f_run)(struct wordclock_source_component*);
+   int (*f_stop_source)(struct wordclock_source_component*);
+   void(*f_free_priv)(struct wordclock_source_component*);
 };
 
-extern void**        ambitv_components;
+extern void**        wordclock_components;
 
 int
-ambitv_component_enable(void* component);
+wordclock_component_enable(void* component);
 
 void*
-ambitv_component_find_by_name(const char* name);
+wordclock_component_find_by_name(const char* name);
 
 void*
-ambitv_component_find_in_group(const char* name, int active);
+wordclock_component_find_in_group(const char* name, int active);
 
 void
-ambitv_component_print_configuration(void* component);
+wordclock_component_print_configuration(void* component);
 
 int
-ambitv_component_activate(void* component);
+wordclock_component_activate(void* component);
 
 int
-ambitv_component_deactivate(void* component);
+wordclock_component_deactivate(void* component);
 
 
-struct ambitv_source_component*
-ambitv_source_component_create(const char* name);
-
-void
-ambitv_source_component_distribute_to_active_processors(
-   struct ambitv_source_component* compoment, void* frame_data, int width, int height, int bytesperline, enum ambitv_video_format fmt);
+struct wordclock_source_component*
+wordclock_source_component_create(const char* name);
 
 void
-ambitv_source_component_free(struct ambitv_source_component* component);
-
-
-
-struct ambitv_processor_component*
-ambitv_processor_component_create(const char* name);
+wordclock_source_component_distribute_to_active_processors(
+   struct wordclock_source_component* compoment, void* frame_data, int width, int height, int bytesperline, int fmt);
 
 void
-ambitv_processor_component_free(struct ambitv_processor_component* component);
+wordclock_source_component_free(struct wordclock_source_component* component);
 
 
 
-struct ambitv_sink_component*
-ambitv_sink_component_create(const char* name);
+struct wordclock_processor_component*
+wordclock_processor_component_create(const char* name);
 
 void
-ambitv_sink_component_free(struct ambitv_sink_component* component);
+wordclock_processor_component_free(struct wordclock_processor_component* component);
 
-#endif // __AMBITV_COMPONENT_H__
+
+
+struct wordclock_sink_component*
+wordclock_sink_component_create(const char* name);
+
+void
+wordclock_sink_component_free(struct wordclock_sink_component* component);
+
+#endif // __WORDCLOCK_COMPONENT_H__

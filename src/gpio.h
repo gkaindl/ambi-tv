@@ -59,10 +59,10 @@ typedef struct
     uint32_t pudclk[2];                          // GPIO Pin Pull up/down Enable Clock
     uint32_t resvd_0xa0[4];
     uint32_t test;
-} __attribute__((packed)) gpio_t;
+} __attribute__((packed, aligned(4))) gpio_t;
 
 
-#define GPIO                                     (0x20200000)  // 0x7e200000
+#define GPIO_OFFSET                              (0x00200000)
 
 
 static inline void gpio_function_set(volatile gpio_t *gpio, uint8_t pin, uint8_t function)
@@ -105,7 +105,7 @@ static inline void gpio_output_set(volatile gpio_t *gpio, uint8_t pin, uint8_t o
     gpio->fsel[regnum] |= ((function & 0x7) << offset);
 }
 
-int ambitv_gpio_open_button_irq(int num_gpio);
-void ambitv_gpio_close_button_irq(int descriptor, int num_gpio);
+int wordclock_gpio_open_button_irq(int num_gpio);
+void wordclock_gpio_close_button_irq(int descriptor, int num_gpio);
 
 #endif /* __GPIO_H__ */

@@ -31,6 +31,11 @@
 #ifndef __PWM_DEV_H__
 #define __PWM_DEV_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "rpihw.h"
 #include "clk.h"
 #include "gpio.h"
 #include "dma.h"
@@ -50,7 +55,18 @@
 #define PWM_BYTE_COUNT(leds, freq)               (((((LED_BIT_COUNT(leds, freq) >> 3) & ~0x7) + 4) + 4) * \
                                                   RPI_PWM_CHANNELS)
 
-
+// We use the mailbox interface to request memory from the VideoCore.
+// This lets us request one physically contiguous chunk, find its
+// physical address, and map it 'uncached' so that writes from this
+// code are immediately visible to the DMA controller.  This struct
+// holds data relevant to the mailbox interface.
+typedef struct videocore_mbox {
+    int handle;             /* From mbox_open() */
+    unsigned mem_ref;       /* From mem_alloc() */
+    unsigned bus_addr;      /* From mem_lock() */
+    unsigned size;          /* Size of allocation */
+    uint8_t *virt_addr;     /* From mapmem() */
+} videocore_mbox_t;
 
 typedef struct pwm_dev_device
 {
@@ -59,13 +75,24 @@ typedef struct pwm_dev_device
     volatile pwm_t *pwm;
     volatile dma_cb_t *dma_cb;
     uint32_t dma_cb_addr;
-    dma_page_t page_head;
     volatile gpio_t *gpio;
     volatile cm_pwm_t *cm_pwm;
+    videocore_mbox_t mbox;
     int max_count;
 } pwm_dev_device_t;
 
 extern pwm_dev_device_t pwm_dev_device;
+
+#define PWM_DEV_TARGET_FREQ                       800000   // Can go as low as 400000
+
+#define PWM_DEV_STRIP_RGB                         0x100800
+#define PWM_DEV_STRIP_RBG                         0x100008
+#define PWM_DEV_STRIP_GRB                         0x081000
+#define PWM_DEV_STRIP_GBR                         0x080010
+#define PWM_DEV_STRIP_BRG                         0x001008
+#define PWM_DEV_STRIP_BGR                         0x000810
+
+struct pwm_dev_device;
 
 //typedef uint32_t pwm_dev_led_t;                   //< 0x00RRGGBB
 typedef struct
@@ -74,12 +101,14 @@ typedef struct
     int invert;                                  //< Invert output signal
     int count;                                   //< Number of LEDs, 0 if channel is unused
     int brightness;                              //< Brightness value between 0 and 255
+    int strip_type;                              //< Strip color layout -- one of PWM_DEV_STRIP_xxx constants
     unsigned char *leds;                         //< LED buffers, allocated by driver based on count
 } pwm_dev_channel_t;
 
 typedef struct
 {
     struct pwm_dev_device *device;                //< Private data for driver use
+    const rpi_hw_t *rpi_hw;                      //< RPI Hardware Information
     uint32_t freq;                               //< Required output frequency
     int dmanum;                                  //< DMA number _not_ already in use
     pwm_dev_channel_t channel[RPI_PWM_CHANNELS];
@@ -94,6 +123,9 @@ int pwm_dev_render(pwm_dev_t *pwm_dev);             //< Send LEDs off to hardwar
 int pwm_dev_wait(pwm_dev_t *pwm_dev);               //< Wait for DMA completion
 void dma_start(pwm_dev_t *pwm_dev);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __PWM_DEV_H__ */
 

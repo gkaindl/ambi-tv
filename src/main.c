@@ -1,20 +1,20 @@
-/* ambi-tv: a flexible ambilight clone for embedded linux
+/* word-clock: a flexible ambilight clone for embedded linux
  *  Copyright (C) 2013 Georg Kaindl
  *
- *  This file is part of ambi-tv.
+ *  This file is part of word-clock.
  *
- *  ambi-tv is free software: you can redistribute it and/or modify
+ *  word-clock is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 2 of the License, or
  *  (at your option) any later version.
  *
- *  ambi-tv is distributed in the hope that it will be useful,
+ *  word-clock is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with word-clock.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <stdio.h>
@@ -44,118 +44,118 @@
 
 #define LOGNAME      "main: "
 
-#define DEFAULT_CONFIG_PATH   "/etc/ambi-tv.conf"
+#define DEFAULT_CONFIG_PATH   "/etc/word-clock.conf"
 #define BUTTON_MILLIS         250
 #define BUTTON_MILLIS_HYST    10
 
 static const char gcolors[][22] =
 { "gamma-red=", "gamma-green=", "gamma-blue=", "intensity-red=", "intensity-green=", "intensity-blue=", "intensity-min-red=", "intensity-min-green=", "intensity-min-blue=" };
 
-struct ambitv_main_conf
+struct wordclock_main_conf
 {
 	int program_idx;
 	int gpio_idx;
 	int portno;
 	char* config_path;
 
-	int cur_prog, ambitv_on, gpio_fd;
+	int cur_prog, wordclock_on, gpio_fd;
 	int button_cnt;
 	struct timeval last_button_press;
 	volatile int running;
 };
 
-struct ambitv_main_conf conf;
-const char flagfile[] = "/tmp/.ambi-tv.mode";
+static struct wordclock_main_conf conf;
+const char flagfile[] = "/tmp/.word-clock.mode";
 int sockfd = -1, newsockfd = -1;
 socklen_t clilen;
 struct sockaddr_in serv_addr, cli_addr;
 char buffer[512], *bufferptr;
 
-static void ambitv_signal_handler(int signum)
+static void wordclock_signal_handler(int signum)
 {
 	signal(signum, SIG_IGN);
 	conf.running = 0;
 }
 
-static int ambitv_handle_config_block(const char* name, int argc, char** argv)
+static int wordclock_handle_config_block(const char* name, int argc, char** argv)
 {
 	int ret = 0;
 
 	switch (name[0])
 	{
 	case '&':
-		ret = ambitv_register_program_for_name(&name[1], argc, argv);
+		ret = wordclock_register_program_for_name(&name[1], argc, argv);
 		break;
 
 	default:
-		ret = ambitv_register_component_for_name(name, argc, argv);
+		ret = wordclock_register_component_for_name(name, argc, argv);
 		break;
 	}
 
 	return ret;
 }
 
-static long ambitv_millis_between(struct timeval* now, struct timeval* earlier)
+static long wordclock_millis_between(struct timeval* now, struct timeval* earlier)
 {
 	return (long) ((now->tv_sec - earlier->tv_sec) * 1000) + (long) ((now->tv_usec - earlier->tv_usec) / 1000);
 }
 
-static int ambitv_cycle_next_program()
+static int wordclock_cycle_next_program()
 {
 	int ret = 0;
 
-	if (!conf.ambitv_on)
+	if (!conf.wordclock_on)
 	{
-		ambitv_log(ambitv_log_info,
+		wordclock_log(wordclock_log_info,
 		LOGNAME "not cycling program, because state is paused.\n");
 
 		return 0;
 	}
 
-	conf.cur_prog = (conf.cur_prog + 1) % ambitv_num_programs;
+	conf.cur_prog = (conf.cur_prog + 1) % wordclock_num_programs;
 
-	ret = ambitv_program_run(ambitv_programs[conf.cur_prog]);
+	ret = wordclock_program_run(wordclock_programs[conf.cur_prog]);
 
 	if (ret < 0)
 	{
-		ambitv_log(ambitv_log_error, LOGNAME "failed to switch to program '%s', aborting...\n",
-				ambitv_programs[conf.cur_prog]->name);
+		wordclock_log(wordclock_log_error, LOGNAME "failed to switch to program '%s', aborting...\n",
+				wordclock_programs[conf.cur_prog]->name);
 	}
 	else
 	{
-		ambitv_log(ambitv_log_info, LOGNAME "switched to program '%s'.\n", ambitv_programs[conf.cur_prog]->name);
+		wordclock_log(wordclock_log_info, LOGNAME "switched to program '%s'.\n", wordclock_programs[conf.cur_prog]->name);
 	}
 
 	return ret;
 }
 
-static int ambitv_toggle_paused()
+static int wordclock_toggle_paused()
 {
 	int ret = 0;
 
-	conf.ambitv_on = !conf.ambitv_on;
+	conf.wordclock_on = !conf.wordclock_on;
 
-	if (conf.ambitv_on)
+	if (conf.wordclock_on)
 	{
-		ret = ambitv_program_run(ambitv_programs[conf.cur_prog]);
+		ret = wordclock_program_run(wordclock_programs[conf.cur_prog]);
 		if (ret < 0)
-			ambitv_log(ambitv_log_error, LOGNAME "failed to start program '%s'.\n",
-					ambitv_programs[conf.cur_prog]->name);
+			wordclock_log(wordclock_log_error, LOGNAME "failed to start program '%s'.\n",
+					wordclock_programs[conf.cur_prog]->name);
 	}
 	else
 	{
-		ret = ambitv_program_stop_current();
+		ret = wordclock_program_stop_current();
 		if (ret < 0)
-			ambitv_log(ambitv_log_error, LOGNAME "failed to stop program '%s'.\n",
-					ambitv_programs[conf.cur_prog]->name);
+			wordclock_log(wordclock_log_error, LOGNAME "failed to stop program '%s'.\n",
+					wordclock_programs[conf.cur_prog]->name);
 	}
 
-	ambitv_log(ambitv_log_info, LOGNAME "now: %s\n", conf.ambitv_on ? "running" : "paused");
+	wordclock_log(wordclock_log_info, LOGNAME "now: %s\n", conf.wordclock_on ? "running" : "paused");
 
 	return ret;
 }
 
-static int ambitv_runloop()
+static int wordclock_runloop()
 {
 	int ret = -1, n;
 	unsigned char c = 0;
@@ -185,8 +185,8 @@ static int ambitv_runloop()
 	}
 	if (strlen(buffer))
 	{
-		struct ambitv_sink_component* scomponent;
-		struct ambitv_processor_component* pcomponent;
+		struct wordclock_sink_component* scomponent;
+		struct wordclock_processor_component* pcomponent;
 
 		if ((bufferptr = strstr(buffer, "Connection: close")) != NULL)
 			bb = true;
@@ -221,30 +221,30 @@ static int ambitv_runloop()
 					readval = 1;
 					sscanf(valpos, "%lf", &newval);
 				}
-				scomponent = (struct ambitv_sink_component*) ambitv_component_find_in_group("led-", 1);
+				scomponent = (struct wordclock_sink_component*) wordclock_component_find_in_group("led-", 1);
 				if (scomponent == NULL)
-					scomponent = (struct ambitv_sink_component*) ambitv_component_find_in_group("led-", 0);
+					scomponent = (struct wordclock_sink_component*) wordclock_component_find_in_group("led-", 0);
 				if (scomponent != NULL)
 				{
 					if ((done = ((bufferptr = strstr(buffer, "mode=")) != NULL)) != 0)
 					{
 						if (readval)
 						{
-							if ((newval >= 0) && (newval < ambitv_num_programs))
+							if ((newval >= 0) && (newval < wordclock_num_programs))
 							{
-								ret = ambitv_program_run(ambitv_programs[(int) newval]);
+								ret = wordclock_program_run(wordclock_programs[(int) newval]);
 								if (ret < 0)
-									ambitv_log(ambitv_log_error, LOGNAME "failed to start program '%s'.\n",
-											ambitv_programs[(int) newval]->name);
+									wordclock_log(wordclock_log_error, LOGNAME "failed to start program '%s'.\n",
+											wordclock_programs[(int) newval]->name);
 								else
 									conf.cur_prog = (int) newval;
 							}
 							else
 							{
-								ret = ambitv_program_stop_current();
+								ret = wordclock_program_stop_current();
 								if (ret < 0)
-									ambitv_log(ambitv_log_error, LOGNAME "failed to stop program '%s'.\n",
-											ambitv_programs[conf.cur_prog]->name);
+									wordclock_log(wordclock_log_error, LOGNAME "failed to stop program '%s'.\n",
+											wordclock_programs[conf.cur_prog]->name);
 							}
 						}
 						else
@@ -259,13 +259,13 @@ static int ambitv_runloop()
 						{
 							if (newval >= 0 && newval <= 100)
 							{
-								ret = scomponent->f_set_output_to_rgb(scomponent, ambitv_special_sinkcommand_brightness,
+								ret = scomponent->f_set_output_to_rgb(scomponent, wordclock_special_sinkcommand_brightness,
 										(int) newval, 0, 0);
 							}
 						}
 						else
 						{
-							getval = scomponent->f_set_output_to_rgb(scomponent, ambitv_special_sinkcommand_brightness,
+							getval = scomponent->f_set_output_to_rgb(scomponent, wordclock_special_sinkcommand_brightness,
 									0, 1, 0);
 							sprintf(buffer, "%d", getval);
 							ret = 1;
@@ -285,14 +285,14 @@ static int ambitv_runloop()
 									if (newval >= 0 && newval <= 100)
 									{
 										ret = scomponent->f_set_output_to_rgb(scomponent,
-												ambitv_special_sinkcommand_gamma_red + idx, (int) (newval * 100.0), 0,
+												wordclock_special_sinkcommand_gamma_red + idx, (int) (newval * 100.0), 0,
 												0);
 									}
 								}
 								else
 								{
 									getval = scomponent->f_set_output_to_rgb(scomponent,
-											ambitv_special_sinkcommand_gamma_red + idx, 0, 1, 0);
+											wordclock_special_sinkcommand_gamma_red + idx, 0, 1, 0);
 									if (idx < 3)
 										sprintf(buffer, "%.02lf", (double) getval / 100.0);
 									else
@@ -305,9 +305,9 @@ static int ambitv_runloop()
 				}
 				if (!done)
 				{
-					pcomponent = (struct ambitv_processor_component*) ambitv_component_find_in_group("audio-proc", 1);
+					pcomponent = (struct wordclock_processor_component*) wordclock_component_find_in_group("audio-proc", 1);
 					if (pcomponent == NULL)
-						pcomponent = (struct ambitv_processor_component*) ambitv_component_find_in_group("audio-proc", 0);
+						pcomponent = (struct wordclock_processor_component*) wordclock_component_find_in_group("audio-proc", 0);
 					if (pcomponent != NULL)
 					{
 						if ((done = ((bufferptr = strstr(buffer, "typey=")) != NULL)) != 0)
@@ -317,13 +317,13 @@ static int ambitv_runloop()
 								if (newval >= 0 && newval <= 1000)
 								{
 									ret = pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, (int) newval,
-											ambitv_special_audiocommand_type);
+											wordclock_special_audiocommand_type);
 								}
 							}
 							else
 							{
 								getval = pcomponent->f_consume_frame(pcomponent, NULL, 0, 1, 0,
-										ambitv_special_audiocommand_type);
+										wordclock_special_audiocommand_type);
 								sprintf(buffer, "%d", getval);
 								ret = 1;
 							}
@@ -335,13 +335,13 @@ static int ambitv_runloop()
 								if (newval >= 0 && newval <= 1000)
 								{
 									ret = pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, (int) newval,
-											ambitv_special_audiocommand_sensitivity);
+											wordclock_special_audiocommand_sensitivity);
 								}
 							}
 							else
 							{
 								getval = pcomponent->f_consume_frame(pcomponent, NULL, 0, 1, 0,
-										ambitv_special_audiocommand_sensitivity);
+										wordclock_special_audiocommand_sensitivity);
 								sprintf(buffer, "%d", getval);
 								ret = 1;
 							}
@@ -353,13 +353,13 @@ static int ambitv_runloop()
 								if (newval >= 0 && newval <= 7)
 								{
 									ret = pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, (int) newval,
-											ambitv_special_audiocommand_smoothing);
+											wordclock_special_audiocommand_smoothing);
 								}
 							}
 							else
 							{
 								getval = pcomponent->f_consume_frame(pcomponent, NULL, 0, 1, 0,
-										ambitv_special_audiocommand_smoothing);
+										wordclock_special_audiocommand_smoothing);
 								sprintf(buffer, "%d", getval);
 								ret = 1;
 							}
@@ -371,13 +371,13 @@ static int ambitv_runloop()
 								if (newval >= 0 && newval <= 1)
 								{
 									ret = pcomponent->f_consume_frame(pcomponent, NULL, 0, 0, (int) newval,
-											ambitv_special_audiocommand_linear);
+											wordclock_special_audiocommand_linear);
 								}
 							}
 							else
 							{
 								getval = pcomponent->f_consume_frame(pcomponent, NULL, 0, 1, 0,
-										ambitv_special_audiocommand_linear);
+										wordclock_special_audiocommand_linear);
 								sprintf(buffer, "%d", getval);
 								ret = 1;
 							}
@@ -416,7 +416,7 @@ static int ambitv_runloop()
 	{
 		if (EINTR != errno && EWOULDBLOCK != errno)
 		{
-			ambitv_log(ambitv_log_error, LOGNAME "error during select(): %d (%s)\n",
+			wordclock_log(wordclock_log_error, LOGNAME "error during select(): %d (%s)\n",
 			errno, strerror(errno));
 			ret = 0;
 		}
@@ -432,7 +432,7 @@ static int ambitv_runloop()
 		{
 			if (EINTR != errno && EWOULDBLOCK != errno)
 			{
-				ambitv_log(ambitv_log_error, LOGNAME "error during read() on stdin: %d (%s)\n",
+				wordclock_log(wordclock_log_error, LOGNAME "error during read() on stdin: %d (%s)\n",
 				errno, strerror(errno));
 			}
 			else
@@ -447,7 +447,7 @@ static int ambitv_runloop()
 		{
 		case 0x20:
 		{ // space
-			ret = ambitv_cycle_next_program();
+			ret = wordclock_cycle_next_program();
 			if (ret < 0)
 				goto finishLoop;
 
@@ -456,7 +456,7 @@ static int ambitv_runloop()
 
 		case 't':
 		{
-			ret = ambitv_toggle_paused();
+			ret = wordclock_toggle_paused();
 			if (ret < 0)
 				goto finishLoop;
 
@@ -479,7 +479,7 @@ static int ambitv_runloop()
 		{
 			if (EINTR != errno && EWOULDBLOCK != errno)
 			{
-				ambitv_log(ambitv_log_error, LOGNAME "failed to read from gpio %d.\n", conf.gpio_idx);
+				wordclock_log(wordclock_log_error, LOGNAME "failed to read from gpio %d.\n", conf.gpio_idx);
 				ret = -1;
 			}
 			else
@@ -497,7 +497,7 @@ static int ambitv_runloop()
 			(void) gettimeofday(&now, NULL);
 			if (0 != conf.last_button_press.tv_sec)
 			{
-				long millis = ambitv_millis_between(&now, &conf.last_button_press);
+				long millis = wordclock_millis_between(&now, &conf.last_button_press);
 
 				if (millis <= BUTTON_MILLIS && BUTTON_MILLIS_HYST <= millis)
 					conf.button_cnt++;
@@ -515,17 +515,17 @@ static int ambitv_runloop()
 		(void) gettimeofday(&now, NULL);
 		if (0 != conf.last_button_press.tv_sec)
 		{
-			long millis = ambitv_millis_between(&now, &conf.last_button_press);
+			long millis = wordclock_millis_between(&now, &conf.last_button_press);
 
 			if (millis > BUTTON_MILLIS)
 			{
 				if (conf.button_cnt > 1)
 				{
-					ret = ambitv_cycle_next_program();
+					ret = wordclock_cycle_next_program();
 				}
 				else
 				{
-					ret = ambitv_toggle_paused();
+					ret = wordclock_toggle_paused();
 				}
 
 				conf.button_cnt = 0;
@@ -537,7 +537,7 @@ static int ambitv_runloop()
 	finishLoop: return ret;
 }
 
-static void ambitv_usage(const char* name)
+static void wordclock_usage(const char* name)
 {
 	const char* p = name + strlen(name);
 	while (p != name && *p != '/')
@@ -554,11 +554,10 @@ static void ambitv_usage(const char* name)
 					"\t-h,--help                display this help text.\n"
 					"\t-p,--program [i]         run the [i]-th program from the configuration file on start-up.\n"
 					"\t-s,--socketport [i]      set the socket port to communicate with %s\n"
-					"\t-d,--debug				activate debug output\n"
 					"\n", p, DEFAULT_CONFIG_PATH, p);
 }
 
-static int ambitv_main_configure(int argc, char** argv)
+static int wordclock_main_configure(int argc, char** argv)
 {
 	int c, ret = 0;
 
@@ -569,11 +568,10 @@ static int ambitv_main_configure(int argc, char** argv)
 	{ "help", no_argument, 0, 'h' },
 	{ "program", required_argument, 0, 'p' },
 	{ "socketport", required_argument, 0, 's' },
-	{ "debug", no_argument, 0, 'd' },
 	{ NULL, 0, 0, 0 } };
 	while (1)
 	{
-		c = getopt_long(argc, argv, "b:f:hp:s:d", lopts, NULL);
+		c = getopt_long(argc, argv, "b:f:hp:", lopts, NULL);
 
 		if (c < 0)
 			break;
@@ -598,10 +596,6 @@ static int ambitv_main_configure(int argc, char** argv)
 			break;
 		}
 
-		case 'd':
-			fdebug = 1;
-			break;
-
 		case 'b':
 		{
 			if (NULL != optarg)
@@ -615,9 +609,9 @@ static int ambitv_main_configure(int argc, char** argv)
 				}
 				else
 				{
-					ambitv_log(ambitv_log_error, LOGNAME "invalid argument for '%s': '%s'.\n", argv[optind - 2],
+					wordclock_log(wordclock_log_error, LOGNAME "invalid argument for '%s': '%s'.\n", argv[optind - 2],
 							optarg);
-					ambitv_usage(argv[0]);
+					wordclock_usage(argv[0]);
 					return -1;
 				}
 			}
@@ -638,9 +632,9 @@ static int ambitv_main_configure(int argc, char** argv)
 				}
 				else
 				{
-					ambitv_log(ambitv_log_error, LOGNAME "invalid argument for '%s': '%s'.\n", argv[optind - 2],
+					wordclock_log(wordclock_log_error, LOGNAME "invalid argument for '%s': '%s'.\n", argv[optind - 2],
 							optarg);
-					ambitv_usage(argv[0]);
+					wordclock_usage(argv[0]);
 					return -1;
 				}
 			}
@@ -650,7 +644,7 @@ static int ambitv_main_configure(int argc, char** argv)
 
 		case 'h':
 		{
-			ambitv_usage(argv[0]);
+			wordclock_usage(argv[0]);
 			exit(0);
 		}
 
@@ -661,8 +655,8 @@ static int ambitv_main_configure(int argc, char** argv)
 
 	if (optind < argc)
 	{
-		ambitv_log(ambitv_log_error, LOGNAME "extraneous configuration argument: '%s'.\n", argv[optind]);
-		ambitv_usage(argv[0]);
+		wordclock_log(wordclock_log_error, LOGNAME "extraneous configuration argument: '%s'.\n", argv[optind]);
+		wordclock_usage(argv[0]);
 		ret = -1;
 	}
 
@@ -672,16 +666,16 @@ static int ambitv_main_configure(int argc, char** argv)
 int main(int argc, char** argv)
 {
 	int ret = 0, i;
-	struct ambitv_conf_parser* parser;
+	struct wordclock_conf_parser* parser;
 	struct termios tt;
 	unsigned long tt_orig;
 
-	signal(SIGINT, ambitv_signal_handler);
-	signal(SIGTERM, ambitv_signal_handler);
+	signal(SIGINT, wordclock_signal_handler);
+	signal(SIGTERM, wordclock_signal_handler);
 
 	printf("\n"
 			"*********************************************************\n"
-			"*  ambi-tv: diy ambient lighting for your screen or tv  *\n"
+			"*  word-clock: diy ambient lighting for your screen or tv  *\n"
 			"*                                         (c) @gkaindl  *\n"
 			"*********************************************************\n"
 			"\n");
@@ -690,48 +684,48 @@ int main(int argc, char** argv)
 	conf.gpio_idx = -1;
 	conf.portno = 16384;
 	conf.config_path = DEFAULT_CONFIG_PATH;
-	conf.ambitv_on = 1;
+	conf.wordclock_on = 1;
 	conf.gpio_fd = -1;
 	conf.running = 1;
 
-	ret = ambitv_main_configure(argc, argv);
+	ret = wordclock_main_configure(argc, argv);
 	if (ret < 0)
 		return -1;
 
-	parser = ambitv_conf_parser_create();
-	parser->f_handle_block = ambitv_handle_config_block;
-	ret = ambitv_conf_parser_read_config_file(parser, conf.config_path);
-	ambitv_conf_parser_free(parser);
+	parser = wordclock_conf_parser_create();
+	parser->f_handle_block = wordclock_handle_config_block;
+	ret = wordclock_conf_parser_read_config_file(parser, conf.config_path);
+	wordclock_conf_parser_free(parser);
 
 	if (ret < 0)
 	{
-		ambitv_log(ambitv_log_error, LOGNAME "failed to parse configuration file, aborting...\n");
-		ambitv_usage(argv[0]);
+		wordclock_log(wordclock_log_error, LOGNAME "failed to parse configuration file, aborting...\n");
+		wordclock_usage(argv[0]);
 		return -1;
 	}
 
-	if (ambitv_num_programs <= 0)
+	if (wordclock_num_programs <= 0)
 	{
-		ambitv_log(ambitv_log_error, LOGNAME "no programs available, aborting...\n");
+		wordclock_log(wordclock_log_error, LOGNAME "no programs available, aborting...\n");
 		return -1;
 	}
 
-	ambitv_log(ambitv_log_info, LOGNAME "configuration finished, %d programs available.\n", ambitv_num_programs);
+	wordclock_log(wordclock_log_info, LOGNAME "configuration finished, %d programs available.\n", wordclock_num_programs);
 
-	for (i = 0; i < ambitv_num_programs; i++)
-		ambitv_log(ambitv_log_info, "\t%s\n", ambitv_programs[i]->name);
+	for (i = 0; i < wordclock_num_programs; i++)
+		wordclock_log(wordclock_log_info, "\t%s\n", wordclock_programs[i]->name);
 
 	if (conf.gpio_idx >= 0)
 	{
-		conf.gpio_fd = ambitv_gpio_open_button_irq(conf.gpio_idx);
+		conf.gpio_fd = wordclock_gpio_open_button_irq(conf.gpio_idx);
 		if (conf.gpio_fd < 0)
 		{
-			ambitv_log(ambitv_log_error, LOGNAME "failed to prepare gpio %d, aborting...\n", conf.gpio_idx);
+			wordclock_log(wordclock_log_error, LOGNAME "failed to prepare gpio %d, aborting...\n", conf.gpio_idx);
 			return -1;
 		}
 		else
 		{
-			ambitv_log(ambitv_log_info, LOGNAME "using gpio %d as physical button.\n", conf.gpio_idx);
+			wordclock_log(wordclock_log_info, LOGNAME "using gpio %d as physical button.\n", conf.gpio_idx);
 		}
 	}
 
@@ -740,32 +734,32 @@ int main(int argc, char** argv)
 	tt.c_lflag &= ~(ICANON | ECHO);
 	tcsetattr(STDIN_FILENO, TCSANOW, &tt);
 
-	if (conf.program_idx >= ambitv_num_programs)
+	if (conf.program_idx >= wordclock_num_programs)
 	{
-		ambitv_log(ambitv_log_error,
+		wordclock_log(wordclock_log_error,
 		LOGNAME "program at index %d requested, but only %d programs available. aborting...\n", conf.program_idx,
-				ambitv_num_programs);
+				wordclock_num_programs);
 		goto errReturn;
 	}
 
 	conf.cur_prog = conf.program_idx;
 
-	ret = ambitv_program_run(ambitv_programs[conf.cur_prog]);
+	ret = wordclock_program_run(wordclock_programs[conf.cur_prog]);
 
 	if (ret < 0)
 	{
-		ambitv_log(ambitv_log_error, LOGNAME "failed to start initial program '%s', aborting...\n",
-				ambitv_programs[conf.cur_prog]->name);
+		wordclock_log(wordclock_log_error, LOGNAME "failed to start initial program '%s', aborting...\n",
+				wordclock_programs[conf.cur_prog]->name);
 		goto errReturn;
 	}
 
-	ambitv_log(ambitv_log_info, LOGNAME "started initial program '%s'.\n", ambitv_programs[conf.cur_prog]->name);
+	wordclock_log(wordclock_log_info, LOGNAME "started initial program '%s'.\n", wordclock_programs[conf.cur_prog]->name);
 
 	fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL) | O_NONBLOCK);
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0)
-		ambitv_log(ambitv_log_error, LOGNAME "ERROR opening socket\n");
+		wordclock_log(wordclock_log_error, LOGNAME "ERROR opening socket\n");
 	else
 	{
 		fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL) | O_NONBLOCK);
@@ -774,30 +768,30 @@ int main(int argc, char** argv)
 		serv_addr.sin_addr.s_addr = INADDR_ANY;
 		serv_addr.sin_port = htons(conf.portno);
 		if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-			ambitv_log(ambitv_log_error, LOGNAME "ERROR on binding socket to port %d\n", conf.portno);
+			wordclock_log(wordclock_log_error, LOGNAME "ERROR on binding socket to port %d\n", conf.portno);
 		if (listen(sockfd, 5) < 0)
-			ambitv_log(ambitv_log_error, LOGNAME "ERROR on listening on socket\n");
+			wordclock_log(wordclock_log_error, LOGNAME "ERROR on listening on socket\n");
 		clilen = sizeof(cli_addr);
 	}
-	ambitv_log(ambitv_log_info,
+	wordclock_log(wordclock_log_info,
 	LOGNAME "************* start-up complete\n"
 	"\tpress <space> to cycle between programs.\n"
 	"\tpress 't' to toggle pause.\n");
 	if (conf.gpio_idx >= 0)
 	{
-		ambitv_log(ambitv_log_info,
+		wordclock_log(wordclock_log_info,
 				"\tphysical (gpio) button: click to pause/resume, double-click to cycle between programs.\n");
 	}
 
-	while (conf.running && ambitv_runloop() >= 0)
+	while (conf.running && wordclock_runloop() >= 0)
 		;
 
-	ret = ambitv_program_stop_current();
+	ret = wordclock_program_stop_current();
 
 	if (ret < 0)
 	{
-		ambitv_log(ambitv_log_error, LOGNAME "failed to stop program '%s' before exiting.\n",
-				ambitv_programs[conf.cur_prog]->name);
+		wordclock_log(wordclock_log_error, LOGNAME "failed to stop program '%s' before exiting.\n",
+				wordclock_programs[conf.cur_prog]->name);
 		goto errReturn;
 	}
 
@@ -808,7 +802,7 @@ int main(int argc, char** argv)
 	tcsetattr(STDIN_FILENO, TCSANOW, &tt);
 
 	if (conf.gpio_fd >= 0)
-		ambitv_gpio_close_button_irq(conf.gpio_fd, conf.gpio_idx);
+		wordclock_gpio_close_button_irq(conf.gpio_fd, conf.gpio_idx);
 
 	return ret;
 }

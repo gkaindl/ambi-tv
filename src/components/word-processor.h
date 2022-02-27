@@ -17,12 +17,12 @@
 *  along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __AMBITV_V4L2_GRAB_SOURCE_H__
-#define __AMBITV_V4L2_GRAB_SOURCE_H__
+#ifndef __WORDCLOCK_WORD_PROCESSOR_H__
+#define __WORDCLOCK_WORD_PROCESSOR_H__
 
 #include "../component.h"
 
-struct ambitv_source_component*
-ambitv_v4l2_grab_create(const char* name, int argc, char** argv);
+struct wordclock_processor_component*
+wordclock_word_processor_create(const char* name, int argc, char** argv);
 
-#endif // __AMBITV_V4L2_GRAB_SOURCE_H__
+#endif // __WORDCLOCK_WORD_PROCESSOR_H__

@@ -1,20 +1,20 @@
-/* ambi-tv: a flexible ambilight clone for embedded linux
+/* word-clock: a flexible ambilight clone for embedded linux
 *  Copyright (C) 2013 Georg Kaindl
 *  
-*  This file is part of ambi-tv.
+*  This file is part of word-clock.
 *  
-*  ambi-tv is free software: you can redistribute it and/or modify
+*  word-clock is free software: you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
 *  the Free Software Foundation, either version 2 of the License, or
 *  (at your option) any later version.
 *  
-*  ambi-tv is distributed in the hope that it will be useful,
+*  word-clock is distributed in the hope that it will be useful,
 *  but WITHOUT ANY WARRANTY; without even the implied warranty of
 *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 *  GNU General Public License for more details.
 *  
 *  You should have received a copy of the GNU General Public License
-*  along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
+*  along with word-clock.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <stdio.h>
@@ -29,13 +29,13 @@
 
 #define LOGNAME   "program: "
 
-struct ambitv_program** ambitv_programs;
-int ambitv_num_programs, ambitv_len_programs;
+struct wordclock_program** wordclock_programs;
+int wordclock_num_programs, wordclock_len_programs;
 
-static struct ambitv_program* ambitv_current_program;
+static struct wordclock_program* wordclock_current_program;
 
 static int
-ambitv_program_contains_component(struct ambitv_program* program, void* component)
+wordclock_program_contains_component(struct wordclock_program* program, void* component)
 {
    int i;
    
@@ -47,21 +47,21 @@ ambitv_program_contains_component(struct ambitv_program* program, void* componen
 }
 
 static int
-ambitv_program_append_component_with_name(struct ambitv_program* program, const char* name)
+wordclock_program_append_component_with_name(struct wordclock_program* program, const char* name)
 {
    int ret = -1;
    
-   void* component = ambitv_component_find_by_name(name);
+   void* component = wordclock_component_find_by_name(name);
    
    if (NULL != component) {
-      program->num_components = ambitv_util_append_ptr_to_list(
+      program->num_components = wordclock_util_append_ptr_to_list(
          &program->components,
          program->num_components,
          &program->len_components,
          component
       );
       
-      ambitv_log(ambitv_log_info, LOGNAME "'%s': appended component '%s'.\n",
+      wordclock_log(wordclock_log_info, LOGNAME "'%s': appended component '%s'.\n",
          program->name, name);
       
       ret = 0;
@@ -70,7 +70,7 @@ ambitv_program_append_component_with_name(struct ambitv_program* program, const 
 }
 
 static int
-ambitv_program_configure(struct ambitv_program* program, int argc, char** argv)
+wordclock_program_configure(struct wordclock_program* program, int argc, char** argv)
 {
    int c, ret = 0;
    
@@ -89,14 +89,14 @@ ambitv_program_configure(struct ambitv_program* program, int argc, char** argv)
       switch (c) {
          case 'a': {
             if ('&' != optarg[0]) {
-               ambitv_log(ambitv_log_error, LOGNAME "component name is not prefixed with '&': '%s'.\n",
+               wordclock_log(wordclock_log_error, LOGNAME "component name is not prefixed with '&': '%s'.\n",
                   optarg);
                goto errReturn;
             }
             
-            ret = ambitv_program_append_component_with_name(program, &optarg[1]);
+            ret = wordclock_program_append_component_with_name(program, &optarg[1]);
             if (ret < 0) {
-               ambitv_log(ambitv_log_error, LOGNAME "failed to find component with name '%s'.\n",
+               wordclock_log(wordclock_log_error, LOGNAME "failed to find component with name '%s'.\n",
                   optarg);
                goto errReturn;
             }
@@ -110,7 +110,7 @@ ambitv_program_configure(struct ambitv_program* program, int argc, char** argv)
    }
    
    if (optind < argc) {
-      ambitv_log(ambitv_log_error, LOGNAME "extraneous argument '%s'.\n",
+      wordclock_log(wordclock_log_error, LOGNAME "extraneous argument '%s'.\n",
          argv[optind]);
       ret = -1;
    }
@@ -120,47 +120,47 @@ errReturn:
 }
 
 int
-ambitv_program_enable(struct ambitv_program* program)
+wordclock_program_enable(struct wordclock_program* program)
 {
    int i;
    
-   for (i=0; i<ambitv_num_programs; i++)
-      if (0 == strcmp(program->name, ambitv_programs[i]->name)) {
-         ambitv_log(ambitv_log_error, LOGNAME "a program with name '%s' is already registered.\n",
+   for (i=0; i<wordclock_num_programs; i++)
+      if (0 == strcmp(program->name, wordclock_programs[i]->name)) {
+         wordclock_log(wordclock_log_error, LOGNAME "a program with name '%s' is already registered.\n",
             program->name);
          return -1;
       }
    
-   ambitv_num_programs = ambitv_util_append_ptr_to_list(
-      (void***)&ambitv_programs,
-      ambitv_num_programs,
-      &ambitv_len_programs,
+   wordclock_num_programs = wordclock_util_append_ptr_to_list(
+      (void***)&wordclock_programs,
+      wordclock_num_programs,
+      &wordclock_len_programs,
       program
    );
    
-   ambitv_log(ambitv_log_info, LOGNAME "registered program '%s'.\n",
+   wordclock_log(wordclock_log_info, LOGNAME "registered program '%s'.\n",
       program->name);
    
    return 0;
 }
 
-struct ambitv_program*
-ambitv_program_create(const char* name, int argc, char** argv)
+struct wordclock_program*
+wordclock_program_create(const char* name, int argc, char** argv)
 {
    int ret;
    
-   struct ambitv_program* program =
-      (struct ambitv_program*)malloc(sizeof(struct ambitv_program));
+   struct wordclock_program* program =
+      (struct wordclock_program*)malloc(sizeof(struct wordclock_program));
    
    if (NULL != program) {
-      memset(program, 0, sizeof(struct ambitv_program));
+      memset(program, 0, sizeof(struct wordclock_program));
       
       program->name = strdup(name);
       
-      ret = ambitv_program_configure(program, argc, argv);
+      ret = wordclock_program_configure(program, argc, argv);
       
       if (ret < 0) {
-         ambitv_program_free(program);
+         wordclock_program_free(program);
          program = NULL;
       }
    }
@@ -169,7 +169,7 @@ ambitv_program_create(const char* name, int argc, char** argv)
 }
 
 void
-ambitv_program_free(struct ambitv_program* program)
+wordclock_program_free(struct wordclock_program* program)
 {
    if (NULL != program) {
       if (NULL != program->name)
@@ -183,24 +183,24 @@ ambitv_program_free(struct ambitv_program* program)
 }
 
 int
-ambitv_program_run(struct ambitv_program* program)
+wordclock_program_run(struct wordclock_program* program)
 {
    int i, ret = 0;
    
-   if (NULL != ambitv_current_program) {
-      for (i=0; i<ambitv_current_program->num_components; i++) {
-         if (!ambitv_program_contains_component(program, ambitv_current_program->components[i])) {
-            ret = ambitv_component_deactivate(ambitv_current_program->components[i]);
+   if (NULL != wordclock_current_program) {
+      for (i=0; i<wordclock_current_program->num_components; i++) {
+         if (!wordclock_program_contains_component(program, wordclock_current_program->components[i])) {
+            ret = wordclock_component_deactivate(wordclock_current_program->components[i]);
             if (ret < 0)
                goto errReturn;
          }
       }
    }
    
-   ambitv_current_program = program;
+   wordclock_current_program = program;
    
    for (i=0; i<program->num_components; i++) {
-      ret = ambitv_component_activate(program->components[i]);
+      ret = wordclock_component_activate(program->components[i]);
       if (ret < 0)
          goto errReturn;
    }
@@ -210,18 +210,18 @@ errReturn:
 }
 
 int
-ambitv_program_stop_current()
+wordclock_program_stop_current()
 {
    int i, ret = 0;
    
-   if (NULL != ambitv_current_program) {
-      for (i=0; i<ambitv_current_program->num_components; i++) {
-         ret = ambitv_component_deactivate(ambitv_current_program->components[i]);
+   if (NULL != wordclock_current_program) {
+      for (i=0; i<wordclock_current_program->num_components; i++) {
+         ret = wordclock_component_deactivate(wordclock_current_program->components[i]);
          if (ret < 0)
             return ret;
       }
       
-      ambitv_current_program = NULL;
+      wordclock_current_program = NULL;
    }
    
    return ret;
