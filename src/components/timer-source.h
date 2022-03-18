@@ -17,12 +17,12 @@
 *  along with ambi-tv.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __AMBITV_TIMER_SOURCE_H__
-#define __AMBITV_TIMER_SOURCE_H__
+#ifndef __WORDCLOCK_TIMER_SOURCE_H__
+#define __WORDCLOCK_TIMER_SOURCE_H__
 
 #include "../component.h"
 
-struct ambitv_source_component*
-ambitv_timer_source_create(const char* name, int argc, char** argv);
+struct wordclock_source_component*
+wordclock_timer_source_create(const char* name, int argc, char** argv);
 
-#endif // __AMBITV_TIMER_SOURCE_H__
+#endif // __WORDCLOCK_TIMER_SOURCE_H__

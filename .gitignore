@@ -1,3 +1,8 @@
+a
+src/.cproject
+src/.project
+src/.settings/**
 bin/**
 *.o
 .DS_Store
+ambi-tv_test.conf

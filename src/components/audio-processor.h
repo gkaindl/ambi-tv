@@ -17,23 +17,12 @@
  *  along with word-clock.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __WORDCLOCK_UTIL_H__
-#define __WORDCLOCK_UTIL_H__
+#ifndef __WORDCLOCK_AUDIO_PROCESSOR_H__
+#define __WORDCLOCK_AUDIO_PROCESSOR_H__
 
-#define MIN(x,y)              ((x) > (y)) ? (y) : (x)
-#define MAX(x,y)              ((x) > (y)) ? (x) : (y)
-#define CONSTRAIN(a, l, r)    (MIN(MAX((l), (a)), (r)))
+#include "../component.h"
 
-#define NETIF_MODE_FIRST 	0x01
-#define NETIF_MODE_MID		0x02
-#define NETIF_MODE_LAST		0x04
-#define NETIF_MODE_SINGLE	(NETIF_MODE_FIRST | NETIF_MODE_MID | NETIF_MODE_LAST)
+struct wordclock_processor_component*
+wordclock_audio_processor_create(const char* name, int argc, char** argv);
 
-typedef enum { false, true } bool;
-
-int wordclock_util_append_ptr_to_list(void*** list_ptr, int idx, int* len_ptr, void* ptr);
-char *stristr(const char *String, const char *Pattern);
-
-void netif_send(int socket, char *data, int length, int mode, bool bb);
-
-#endif // __WORDCLOCK_UTIL_H__
+#endif // __WORDCLOCK_AUDIO_PROCESSOR_H__
