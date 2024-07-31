@@ -242,6 +242,13 @@ errReturn:
 }
 
 static int
+ambitv_coloreffect_component_activate(struct ambitv_coloreffect_component* component)
+{
+   component->active = 1;
+   return 0;
+}
+
+static int
 ambitv_processor_component_activate(struct ambitv_processor_component* component)
 {
    component->active = 1;
@@ -297,6 +304,13 @@ errReturn:
 }
 
 static int
+ambitv_coloreffect_component_deactivate(struct ambitv_coloreffect_component* component)
+{
+   component->active = 0;
+   return 0;
+}
+
+static int
 ambitv_processor_component_deactivate(struct ambitv_processor_component* component)
 {
    component->active = 0;
@@ -334,6 +348,10 @@ ambitv_component_activate(void* component)
          ret = ambitv_source_component_activate(
             (struct ambitv_source_component*)component);
          break;
+     case ambitv_component_type_coloreffect:
+        ret = ambitv_coloreffect_component_activate(
+           (struct ambitv_coloreffect_component*)component);
+        break;
       case ambitv_component_type_processor:
          ret = ambitv_processor_component_activate(
             (struct ambitv_processor_component*)component);
@@ -365,6 +383,10 @@ ambitv_component_deactivate(void* component)
          ret = ambitv_source_component_deactivate(
             (struct ambitv_source_component*)component);
          break;
+			case ambitv_component_type_coloreffect:
+				ret = ambitv_coloreffect_component_deactivate(
+			 	 		(struct ambitv_coloreffect_component*)component);
+				break;
       case ambitv_component_type_processor:
          ret = ambitv_processor_component_deactivate(
             (struct ambitv_processor_component*)component);
@@ -403,6 +425,23 @@ ambitv_source_component_distribute_to_active_processors(
 {
    int i, j;
    
+	 for (i=0; i<ambitv_num_components; i++) {
+     struct ambitv_any_component* component =
+        (struct ambitv_any_component*)ambitv_components[i];
+		 
+		 if (
+			 ambitv_component_type_coloreffect == component->type &&
+			 component->active
+		 ) {
+       struct ambitv_coloreffect_component* effect =
+          (struct ambitv_coloreffect_component*)component;
+		 	 
+			 if (NULL != effect->f_prepare_for_frame) {
+			   effect->f_prepare_for_frame(effect, frame_data, width, height, bytesperline, fmt);
+		 	 }
+		 }
+	 }
+	 
    for (i=0; i<ambitv_num_components; i++) {
       struct ambitv_any_component* component =
          (struct ambitv_any_component*)ambitv_components[i];
@@ -444,6 +483,60 @@ ambitv_source_component_free(struct ambitv_source_component* component)
       
       free(component);
    }
+}
+
+struct ambitv_coloreffect_component*
+ambitv_coloreffect_component_create(const char* name)
+{
+   struct ambitv_coloreffect_component* component;
+   
+   component = (struct ambitv_coloreffect_component*)malloc(sizeof(struct ambitv_coloreffect_component));
+   
+   if (NULL != component) {
+      memset(component, 0, sizeof(*component));
+      
+      component->type = ambitv_component_type_coloreffect;
+      component->name = strdup(name);
+   }
+   
+   return component;
+}
+
+void
+ambitv_coloreffect_component_free(struct ambitv_coloreffect_component* component)
+{
+   if (NULL != component) {
+      if (NULL != component->name)
+         free(component->name);
+
+      if (NULL != component->f_free_priv)
+         component->f_free_priv(component);
+      
+      free(component);
+   }
+}
+
+void
+ambitv_apply_active_coloreffects(int color[3], enum ambitv_video_format fmt)
+{
+  int i;
+  
+ for (i=0; i<ambitv_num_components; i++) {
+    struct ambitv_any_component* component =
+       (struct ambitv_any_component*)ambitv_components[i];
+	 
+	 if (
+		 ambitv_component_type_coloreffect == component->type &&
+		 component->active
+	 ) {
+      struct ambitv_coloreffect_component* effect =
+         (struct ambitv_coloreffect_component*)component;
+	 	 
+		 if (NULL != effect->f_apply_color_effect) {
+		   effect->f_apply_color_effect(effect, color, fmt);
+	 	 }
+	 }
+ }
 }
 
 struct ambitv_processor_component*

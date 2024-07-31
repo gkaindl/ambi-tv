@@ -20,8 +20,9 @@
 #ifndef __AMBITV_UTIL_H__
 #define __AMBITV_UTIL_H__
 
-#define MIN(x,y)              ((x) > (y)) ? (y) : (x)
-#define MAX(x,y)              ((x) > (y)) ? (x) : (y)
+#define MIN(x,y)              (((x) > (y)) ? (y) : (x))
+#define MAX(x,y)              (((x) > (y)) ? (x) : (y))
+#define ABS(x)								((x) < 0 ? (-(x)) : (x))
 #define CONSTRAIN(a, l, r)    (MIN(MAX((l), (a)), (r)))
 
 int
@@ -29,5 +30,29 @@ ambitv_util_append_ptr_to_list(void*** list_ptr, int idx, int* len_ptr, void* pt
 
 int
 ambitv_parse_led_string(const char* str, int** out_ptr, int* out_len);
+
+int
+ambitv_assign_int_option(
+	int* target,
+	char* string_arg,
+	char* arg_name,
+	const char* log_name
+);
+	
+int
+ambitv_assign_float_option(
+	float* target,
+	char* string_arg,
+	char* arg_name,
+	const char* log_name
+);
+	
+int
+ambitv_assign_string_option(
+	char** target,
+	char* string_arg,
+	char* arg_name,
+	const char* log_name
+);
 
 #endif // __AMBITV_UTIL_H__

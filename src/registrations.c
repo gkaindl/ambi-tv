@@ -34,6 +34,7 @@
 #include "components/mood-light-processor.h"
 #include "components/color-lamp-processor.h"
 #include "components/lpd8806-spidev-sink.h"
+#include "components/yuv-enhance-coloreffect.h"
 
 #define LOGNAME      "registration: "
 
@@ -70,6 +71,10 @@ static struct ambitv_component_registration registrations[] = {
    {
       .name             = "lpd8806-spidev-sink",
       .constructor      = (void* (*)(const char*, int, char**))ambitv_lpd8806_create
+   },
+   {
+      .name             = "yuv-enhance-coloreffect",
+      .constructor      = (void* (*)(const char*, int, char**))ambitv_yuv_enhance_create
    },
    
    { NULL, NULL }

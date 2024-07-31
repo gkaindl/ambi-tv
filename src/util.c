@@ -18,6 +18,7 @@
 */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "util.h"
 #include "log.h"
@@ -137,4 +138,75 @@ ambitv_parse_led_string(const char* str, int** out_ptr, int* out_len)
 
 errReturn:
    return -1;
+}
+
+int
+ambitv_assign_int_option(
+	int* target,
+	char* string_arg,
+	char* arg_name,
+	const char* log_name
+) {
+	if (NULL == string_arg || NULL == target) {
+		return 0;
+	}
+	
+	char* eptr = NULL;
+	long nbuf = strtol(string_arg, &eptr, 10);
+
+	if ('\0' == *eptr) {
+		*target = (int)nbuf;
+	} else {
+		ambitv_log(ambitv_log_error, "%sinvalid argument for '%s': '%s'.\n",
+			log_name, arg_name, string_arg);
+		return -1;
+	}
+	
+	return 0;
+}
+
+int
+ambitv_assign_float_option(
+	float* target,
+	char* string_arg,
+	char* arg_name,
+	const char* log_name
+) {
+	if (NULL == string_arg || NULL == target) {
+		return 0;
+	}
+	
+	char* eptr = NULL;
+	double nbuf = strtod(string_arg, &eptr);
+
+	if ('\0' == *eptr) {
+		*target = (float)nbuf;
+	} else {
+		ambitv_log(ambitv_log_error, "%sinvalid argument for '%s': '%s'.\n",
+			log_name, arg_name, string_arg);
+		return -1;
+	}
+	
+	return 0;
+}
+
+int
+ambitv_assign_string_option(
+	char** target,
+	char* string_arg,
+	char* arg_name,
+	const char* log_name
+) {
+	if (NULL == string_arg || NULL == target) {
+		return 0;
+	}
+	
+	if (NULL != *target) {
+		free(*target);
+		*target = NULL;
+	}
+          
+	*target = strdup(string_arg);
+	
+	return *target != NULL ? 0 : -1;
 }

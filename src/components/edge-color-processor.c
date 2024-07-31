@@ -75,26 +75,22 @@ ambitv_edge_color_processor_update_sink(
 
    if (sink->f_num_outputs && sink->f_set_output_to_rgb && sink->f_map_output_to_point) {
       n_out = sink->f_num_outputs(sink);
-      
-      // TODO: CRAP
-      /*static int n = 0;
-      for (i=0; i<n_out; i++) {
-         sink->f_set_output_to_rgb(sink, i, (i==n) ? 255 : 0, 0, 0);
-      }
-      n = (n+1)%n_out;*/
 
       for (i=0; i<n_out; i++) {
          unsigned char rgb[3];
          int x, y, x2, y2;
-         
+         				 
          if (0 == sink->f_map_output_to_point(sink, i, edge->width, edge->height, &x, &y)) {
             x  = CONSTRAIN(x-4, 0, edge->width);
             y  = CONSTRAIN(y-4, 0, edge->height);
             x2 = CONSTRAIN(x+4, 0, edge->width);
             y2 = CONSTRAIN(y+4, 0, edge->height);
-            
-            ambitv_video_fmt_avg_rgb_for_block(rgb, edge->frame, x, y, x2-x, y2-y, edge->bytesperline, edge->fmt, 4);
-            
+            						
+            ambitv_video_fmt_avg_rgb_for_block(
+							rgb, edge->frame, x, y, x2-x, y2-y, edge->bytesperline, edge->fmt, 1,
+						  ambitv_apply_active_coloreffects
+						);
+							            
             sink->f_set_output_to_rgb(sink, i, rgb[0], rgb[1], rgb[2]);
          }
       }
@@ -189,7 +185,7 @@ ambitv_edge_color_processor_create(const char* name, int argc, char** argv)
    if (NULL != edge_processor) {
       struct ambitv_edge_processor_priv* priv =
          (struct ambitv_edge_processor_priv*)malloc(sizeof(struct ambitv_edge_processor_priv));
-      memset(priv, 9, sizeof(struct ambitv_edge_processor_priv));
+      memset(priv, 0, sizeof(struct ambitv_edge_processor_priv));
 
       edge_processor->priv = (void*)priv;
       

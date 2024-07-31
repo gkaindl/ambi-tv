@@ -35,7 +35,7 @@ v4l2_to_ambitv_video_format(uint32_t fourcc);
 
 int
 ambitv_video_fmt_avg_rgb_for_block(unsigned char* rgb, const void* pixbuf, int x, int y, int w, int h, int bytesperline,
-   enum ambitv_video_format fmt, int coarseness);
+   enum ambitv_video_format fmt, int coarseness, void (*process_color)(int[3], enum ambitv_video_format));
 
 int
 ambitv_video_fmt_detect_crop_for_frame(

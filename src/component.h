@@ -26,6 +26,7 @@
 
 enum ambitv_component_type {
    ambitv_component_type_source,
+	 ambitv_component_type_coloreffect,
    ambitv_component_type_processor,
    ambitv_component_type_sink
 };
@@ -48,6 +49,22 @@ struct ambitv_sink_component {
    int (*f_set_output_to_rgb)(struct ambitv_sink_component*, int, int, int, int);
    int (*f_commit_outputs)(struct ambitv_sink_component*);
    void(*f_free_priv)(struct ambitv_sink_component*);
+};
+
+struct ambitv_coloreffect_component {
+   enum ambitv_component_type type;
+   char*    name;
+
+   void*    priv;
+   int      active;
+
+   void(*f_print_configuration)(struct ambitv_coloreffect_component*);
+   int (*f_provide_keypairs)(struct ambitv_coloreffect_component*, void* ctx, void (*f)(const char*, int, const char*, void*));
+   int (*f_receive_keypair)(struct ambitv_coloreffect_component*, const char*, const char*);
+   
+   int (*f_prepare_for_frame)(struct ambitv_coloreffect_component*, void*, int, int, int, enum ambitv_video_format);
+   void (*f_apply_color_effect)(struct ambitv_coloreffect_component*, int color[3], enum ambitv_video_format);
+   void(*f_free_priv)(struct ambitv_coloreffect_component*);
 };
 
 struct ambitv_processor_component {
@@ -125,6 +142,14 @@ void
 ambitv_source_component_free(struct ambitv_source_component* component);
 
 
+struct ambitv_coloreffect_component*
+ambitv_coloreffect_component_create(const char* name);
+
+void
+ambitv_coloreffect_component_free(struct ambitv_coloreffect_component* component);
+
+void
+ambitv_apply_active_coloreffects(int color[3], enum ambitv_video_format fmt);
 
 struct ambitv_processor_component*
 ambitv_processor_component_create(const char* name);

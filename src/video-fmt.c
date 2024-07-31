@@ -23,6 +23,7 @@
 
 #include "video-fmt.h"
 #include "log.h"
+#include "util.h"
 
 #define LOGNAME      "video-fmt: "
 
@@ -58,7 +59,7 @@ static void yuv_to_rgb(int y, int u, int v, unsigned char* r, unsigned char* g, 
    int c, d, e, i;
    int rgb[3];
 
-   c = y - 16;
+   c = y > 16 ? y - 16 : 0;
    d = u - 128;
    e = v - 128;
 
@@ -76,29 +77,39 @@ static void yuv_to_rgb(int y, int u, int v, unsigned char* r, unsigned char* g, 
    *b = (unsigned char)rgb[2];
 }
 
-static int avg_rgb_for_block_yuyv(unsigned char* rgb, const void* pixbuf, int x, int y, int w, int h, int bytesperline, int coarseness)
-{
-   int i, j, k, v, y1, u, y2, cnt = 0;
+static int avg_rgb_for_block_yuyv(
+	unsigned char* rgb, const void* pixbuf, int x, int y, int w, int h, int bytesperline, int coarseness,
+	void (*process_color)(int[3], enum ambitv_video_format)
+) {
+   int i, j, k, stride, cnt = 0;
 
    long avg_rgb[3] = {0,0,0};
+	 int yuv1[3], yuv2[3];
    unsigned char irgb[6];
 
    if (0 == bytesperline)
       bytesperline = 2*w;
 
    x = (x >> 2) << 2;
+	 
+	 stride = MIN(1, coarseness);
 
-   for (i=x; i<x+w; i+=2*coarseness) {
+   for (i=x; i<x+w; i+=2*stride) {
       for (j=y; j<y+h; j++) {
          unsigned char* yuyv = &(((unsigned char*)pixbuf)[2*i + j*bytesperline]);
 
-         y1 = yuyv[0];
-         u  = yuyv[1];
-         y2 = yuyv[2];
-         v  = yuyv[3];
+         yuv1[0] = yuyv[0];
+         yuv1[1] = yuv2[1] = yuyv[1];
+         yuv2[0] = yuyv[2];
+         yuv1[2] = yuv2[2] = yuyv[3];
 
-         yuv_to_rgb(y1, u, v, &irgb[0], &irgb[1], &irgb[2]);
-         yuv_to_rgb(y2, u, v, &irgb[3], &irgb[4], &irgb[5]);
+				 if (NULL != process_color) {
+				 	 process_color(yuv1, ambitv_video_format_yuyv);
+					 process_color(yuv2, ambitv_video_format_yuyv);
+				 }
+
+         yuv_to_rgb(yuv1[0], yuv1[1], yuv1[2], &irgb[0], &irgb[1], &irgb[2]);
+         yuv_to_rgb(yuv2[0], yuv2[1], yuv2[2], &irgb[3], &irgb[4], &irgb[5]);
 
          for (k=0; k<6; k++)
             avg_rgb[k%3] += irgb[k];
@@ -204,13 +215,13 @@ ambitv_video_fmt_detect_crop_for_frame_yuyv(int crop[4], int luminance_threshold
 
 int
 ambitv_video_fmt_avg_rgb_for_block(unsigned char* rgb, const void* pixbuf, int x, int y, int w, int h, int bytesperline,
-   enum ambitv_video_format fmt, int coarseness)
+   enum ambitv_video_format fmt, int coarseness, void (*process_color)(int[3], enum ambitv_video_format))
 {
    int ret = -1;
 
    switch (fmt) {
       case ambitv_video_format_yuyv:
-         ret = avg_rgb_for_block_yuyv(rgb, pixbuf, x, y, w, h, bytesperline, coarseness);
+         ret = avg_rgb_for_block_yuyv(rgb, pixbuf, x, y, w, h, bytesperline, coarseness, process_color);
          break;
 
       default:

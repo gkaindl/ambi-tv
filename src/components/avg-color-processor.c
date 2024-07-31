@@ -44,7 +44,10 @@ ambitv_avg_color_processor_handle_frame(
       int coarseness = width/30;
       coarseness = coarseness ? coarseness : 1;
       
-      ambitv_video_fmt_avg_rgb_for_block(avg->rgb, frame, 0, 0, width, height, bytesperline, fmt, coarseness);
+      ambitv_video_fmt_avg_rgb_for_block(
+				avg->rgb, frame, 0, 0, width, height, bytesperline, fmt, coarseness,
+			  ambitv_apply_active_coloreffects
+			);
    }
    
    return 0;

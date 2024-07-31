@@ -36,6 +36,7 @@
 
 #include "../video-fmt.h"
 #include "../log.h"
+#include "../util.h"
 #include "v4l2-grab-source.h"
 
 #define LOGNAME               "v4l2-grab: "
@@ -47,8 +48,12 @@ struct v4l2_grab {
    struct ambitv_source_component* source_component;
    char* device_name;
    int req_buffers;
+	 int req_width, req_height, req_fps;
    int crop[4];   // top, right, bottom, left
    int auto_crop_luminance;
+
+	 struct v4l2_format* prev_fmt;
+	 struct v4l2_streamparm *prev_sparm;
 
    int fd;
 
@@ -204,6 +209,7 @@ ambitv_v4l2_grab_init_device(struct v4l2_grab* grabber)
    int ret;
    struct v4l2_capability cap;
    struct v4l2_format vid_fmt;
+   struct v4l2_streamparm vid_sparm;
 
    ret = xioctl(grabber->fd, VIDIOC_QUERYCAP, &cap);
    if (ret < 0) {
@@ -233,7 +239,72 @@ ambitv_v4l2_grab_init_device(struct v4l2_grab* grabber)
          grabber->device_name);
       return -EINVAL;
    }
+	 
+	 if (grabber->req_width > 0 || grabber->req_height > 0) {
+		 grabber->prev_fmt = malloc(sizeof(vid_fmt));
+		 
+		 if (NULL == grabber->prev_fmt) {
+       ambitv_log(ambitv_log_error, LOGNAME "failed to allocate for prev. video format\n");
+			 return -ENOMEM;
+		 }
+		 
+		 memcpy(grabber->prev_fmt, &vid_fmt, sizeof(vid_fmt));
+		 
+		 // YUYV is currently the only format we support...
+		 vid_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+		 vid_fmt.fmt.pix.field       = V4L2_FIELD_ANY;
+		 
+		 if (grabber->req_width > 0) {
+			 vid_fmt.fmt.pix.width = grabber->req_width;
+		 }
+		 
+		 if (grabber->req_height > 0) {
+			 vid_fmt.fmt.pix.height = grabber->req_height;
+		 }
+		 
+	   ret = xioctl(grabber->fd, VIDIOC_S_FMT, &vid_fmt);
+	   if (ret < 0) {
+			 ambitv_log(ambitv_log_error, LOGNAME "failed to set video format of '%s'.\n",
+			 	 grabber->device_name);
+	     return -EINVAL;
+	   }
+	 }
    
+	 memset(&vid_sparm, 0, sizeof(vid_fmt));
+	 vid_sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	 
+	 ret = xioctl(grabber->fd, VIDIOC_G_PARM, &vid_sparm);
+   if (ret < 0) {
+		 ambitv_log(ambitv_log_error, LOGNAME "failed to determine framerate of '%s'.\n",
+		 	 grabber->device_name);
+     return -EINVAL;
+   }
+	 
+	 if (grabber->req_fps > 0) {
+		 if (0 == (vid_sparm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME)) {
+       ambitv_log(ambitv_log_info, LOGNAME "setting fps not supported by driver\n");
+		 } else {	 
+  		 grabber->prev_sparm = malloc(sizeof(vid_sparm));
+		 
+			 if (NULL == grabber->prev_sparm) {
+	       ambitv_log(ambitv_log_error, LOGNAME "failed to allocate for prev. video fps\n");
+				 return -ENOMEM;
+			 }
+		 
+			 memcpy(grabber->prev_sparm, &vid_sparm, sizeof(vid_sparm));
+			 
+			 vid_sparm.parm.capture.timeperframe.numerator = 1;
+			 vid_sparm.parm.capture.timeperframe.denominator = grabber->req_fps;
+			 
+			 ret = xioctl(grabber->fd, VIDIOC_S_PARM, &vid_sparm);
+		   if (ret < 0) {
+				 ambitv_log(ambitv_log_error, LOGNAME "failed to set video fps of '%s'.\n",
+				 	 grabber->device_name);
+		     return -EINVAL;
+		   }
+	 	 }
+	 }
+	 
    grabber->width          = vid_fmt.fmt.pix.width;
    grabber->height         = vid_fmt.fmt.pix.height;
    grabber->bytesperline   = vid_fmt.fmt.pix.bytesperline;
@@ -242,6 +313,13 @@ ambitv_v4l2_grab_init_device(struct v4l2_grab* grabber)
    ambitv_log(ambitv_log_info, LOGNAME "video format: %ux%u (%s).\n",
       vid_fmt.fmt.pix.width, vid_fmt.fmt.pix.height,
       v4l2_string_from_fourcc(vid_fmt.fmt.pix.pixelformat));
+
+	 // counter-intuitively, numerator and denominator need to be swapped,
+	 // since we'd typically report 30fps as, well, 30fps, not 0.033 seconds per
+	 // per frame ;-) 
+	 ambitv_log(ambitv_log_info, LOGNAME "video framerate: %.1f.\n",
+	   (float)vid_sparm.parm.capture.timeperframe.denominator /
+		 (float)vid_sparm.parm.capture.timeperframe.numerator);
    
    return ambitv_v4l2_grab_init_mmap(grabber);
 }
@@ -252,7 +330,7 @@ ambitv_v4l2_grab_uninit_device(struct v4l2_grab* grabber)
    unsigned int i;
    int ret;
    struct vid_buffer* buffers = (struct vid_buffer*)grabber->buffers;
-   
+   	 
    for (i=0; i < grabber->num_buffers; i++) {
       ret = munmap(buffers[i].start, buffers[i].length);
       if (ret < 0) {
@@ -263,6 +341,30 @@ ambitv_v4l2_grab_uninit_device(struct v4l2_grab* grabber)
    }
    
    ambitv_v4l2_grab_free_buffers(grabber);
+	 
+	 if (NULL != grabber->prev_fmt) { 
+		 ret = xioctl(grabber->fd, VIDIOC_S_PARM, grabber->prev_fmt);
+	   if (ret < 0) {
+			 ambitv_log(ambitv_log_warn, LOGNAME "failed to restore video format of '%s'.\n",
+			 	 grabber->device_name);
+	   }
+		 
+		 free(grabber->prev_fmt);
+		 grabber->prev_fmt = NULL;
+	 }
+	 
+	 if (NULL != grabber->prev_sparm) {
+		 grabber->prev_sparm->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		 
+		 ret = xioctl(grabber->fd, VIDIOC_S_PARM, grabber->prev_sparm);
+	   if (ret < 0) {
+			 ambitv_log(ambitv_log_error, LOGNAME "failed to restore video fps of '%s'.\n",
+			 	 grabber->device_name);
+	   }
+		 
+		 free(grabber->prev_sparm);
+		 grabber->prev_sparm = NULL;
+	 }
    
    return 0;
 }
@@ -308,14 +410,14 @@ ambitv_v4l2_grab_stop_streaming(struct v4l2_grab* grabber)
    enum v4l2_buf_type type;
    
    type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-   
+   	 
    ret = xioctl(grabber->fd, VIDIOC_STREAMOFF, &type);
    if (ret < 0) {
       ambitv_log(ambitv_log_error, LOGNAME "failed to stop video streaming: %d (%s).\n",
          errno, strerror(errno));
       ret = -errno;
    }
-   
+	    
    return ret;
 }
 
@@ -328,7 +430,7 @@ ambitv_v4l2_grab_read_frame(struct v4l2_grab* grabber)
    struct vid_buffer* buffers = (struct vid_buffer*)grabber->buffers;
    
    memset(&buf, 0, sizeof(buf));
-   
+   	 
    buf.type    = V4L2_BUF_TYPE_VIDEO_CAPTURE;
    buf.memory  = V4L2_MEMORY_MMAP;
    
@@ -382,7 +484,7 @@ ambitv_v4l2_grab_read_frame(struct v4l2_grab* grabber)
          break;
       }
    }
-   
+	    
    ambitv_source_component_distribute_to_active_processors(
       grabber->source_component,
       eframe,
@@ -391,13 +493,13 @@ ambitv_v4l2_grab_read_frame(struct v4l2_grab* grabber)
       ebpl,
       grabber->fmt
    );
-   
+   	 
    ret = xioctl(grabber->fd, VIDIOC_QBUF, &buf);
    if (ret < 0) {
       ambitv_log(ambitv_log_error, LOGNAME "failed to enqueue a frame: %d (%s).\n",
          errno, strerror(errno));
    }
-   
+	    
    return ret;
 }
 
@@ -502,6 +604,30 @@ fail_return:
    return ret;
 }
 
+static void*
+ambitv_v4l2_grab_ptr_for_option(
+	struct ambitv_source_component* grabber,
+	char opt
+) {
+	struct v4l2_grab* grab_priv = (struct v4l2_grab*)grabber->priv;
+	
+	switch (opt) {
+		case 'd': return &grab_priv->device_name;
+		case 'w': return &grab_priv->req_width;
+		case 'h': return &grab_priv->req_height;
+		case 'f': return &grab_priv->req_fps;
+		case 'b': return &grab_priv->req_buffers;
+		case 'a': return &grab_priv->auto_crop_luminance;
+    case '0':
+    case '1':
+    case '2':
+    case '3': return &grab_priv->crop[opt-'0'];
+		default: break;
+	}
+	
+	return NULL;
+}
+
 static int
 ambitv_v4l2_grab_configure(struct ambitv_source_component* grabber, int argc, char** argv)
 {
@@ -513,6 +639,9 @@ ambitv_v4l2_grab_configure(struct ambitv_source_component* grabber, int argc, ch
    
    static struct option lopts[] = {
       { "video-device", required_argument, 0, 'd' },
+			{ "video-width", required_argument, 0, 'w' },
+			{ "video-height", required_argument, 0, 'h' },
+			{ "video-fps", required_argument, 0, 'f' },
       { "buffers", required_argument, 0, 'b' },
       { "crop-top", required_argument, 0, '0' },
       { "crop-right", required_argument, 0, '1' },
@@ -530,68 +659,36 @@ ambitv_v4l2_grab_configure(struct ambitv_source_component* grabber, int argc, ch
          
       switch (c) {
          case 'd': {
-            if (NULL != optarg) {
-               if (NULL != grab_priv->device_name)
-                  free(grab_priv->device_name);
-                              
-               grab_priv->device_name = strdup(optarg);
-            }
-            break;
+					 if (0 > ambitv_assign_string_option(
+						 ambitv_v4l2_grab_ptr_for_option(grabber, c),
+					   optarg,
+						 argv[optind-2],
+						 LOGNAME
+					 )) {
+						 return -1;
+					 }
+					 break;
          }
-         
-         case 'b': {
-            if (NULL != optarg) {
-               char* eptr = NULL;
-               long nbuf = strtol(optarg, &eptr, 10);
-               
-               if ('\0' == *eptr) {
-                  grab_priv->req_buffers = (int)nbuf;
-               } else {
-                  ambitv_log(ambitv_log_error, LOGNAME "invalid argument for '%s': '%s'.\n",
-                     argv[optind-2], optarg);
-                  return -1;
-               }
-            }
-            
-            break;
-         }
-         
+				 
+				 case 'w':
+				 case 'h':
+				 case 'f':
+				 case 'b':
+				 case 'a':
          case '0':
          case '1':
          case '2':
          case '3': {
-            if (NULL != optarg) {
-               char* eptr = NULL;
-               long nbuf = strtol(optarg, &eptr, 10);
-               
-               if ('\0' == *eptr && nbuf >= 0) {
-                  grab_priv->crop[c-'0'] = (int)nbuf;
-               } else {
-                  ambitv_log(ambitv_log_error, LOGNAME "invalid argument for '%s': '%s'.\n",
-                     argv[optind-2], optarg);
-                  return -1;
-               }
-            }
-            
-            break;
-         }
-         
-         case 'a': {
-            if (NULL != optarg) {
-               char* eptr = NULL;
-               long nbuf = strtol(optarg, &eptr, 10);
-               
-               if ('\0' == *eptr) {
-                  grab_priv->auto_crop_luminance = (int)nbuf;
-               } else {
-                  ambitv_log(ambitv_log_error, LOGNAME "invalid argument for '%s': '%s'.\n",
-                     argv[optind-2], optarg);
-                  return -1;
-               }
-            }
-            
-            break;
-         }
+					 if (0 > ambitv_assign_int_option(
+						 ambitv_v4l2_grab_ptr_for_option(grabber, c),
+					   optarg,
+						 argv[optind-2],
+						 LOGNAME
+					 )) {
+						 return -1;
+					 }
+					 break;
+				 }
          
          default:
             break;
@@ -614,6 +711,9 @@ ambitv_v4l2_grab_print_configuration(struct ambitv_source_component* component)
    
    ambitv_log(ambitv_log_info,
       "\tdevice name:              %s\n"
+			"\tvideo width:              %d\n"
+			"\tvideo height:             %d\n"
+			"\tvideo fps:                %d\n"
       "\tbuffers:                  %d\n"
       "\tcrop-top:                 %d\n"
       "\tcrop-right:               %d\n"
@@ -621,6 +721,9 @@ ambitv_v4l2_grab_print_configuration(struct ambitv_source_component* component)
       "\tcrop-left:                %d\n"
       "\tauto-crop luma threshold: %d\n",
          grab_priv->device_name,
+				 grab_priv->req_width,
+				 grab_priv->req_height,
+				 grab_priv->req_fps,
          grab_priv->req_buffers,
          grab_priv->crop[0],
          grab_priv->crop[1],
@@ -636,8 +739,20 @@ ambitv_v4l2_grab_free(struct ambitv_source_component* component)
    struct v4l2_grab* grab_priv = (struct v4l2_grab*)component->priv;
 
    if (NULL != grab_priv) {
-      if (NULL != grab_priv->device_name)
+      if (NULL != grab_priv->device_name) {
          free(grab_priv->device_name);
+				 grab_priv->device_name = NULL;
+			}
+			
+			if (NULL != grab_priv->prev_fmt) {
+				free(grab_priv->prev_fmt);
+				grab_priv->prev_fmt = NULL;
+			}
+			
+			if (NULL != grab_priv->prev_sparm) {
+				free(grab_priv->prev_sparm);
+				grab_priv->prev_sparm = NULL;
+			}
       
       ambitv_v4l2_grab_free_buffers(grab_priv);
       ambitv_v4l2_grab_close_device(grab_priv);
@@ -662,9 +777,15 @@ ambitv_v4l2_grab_create(const char* name, int argc, char** argv)
       
       grab_priv->device_name           = strdup(DEFAULT_DEV_NAME);
       grab_priv->req_buffers           = DEFAULT_NUM_BUFFERS;
+			grab_priv->req_width						 = -1;
+			grab_priv->req_height						 = -1;
+			grab_priv->req_fps							 = -1;
       grab_priv->fd                    = -1;
       grab_priv->auto_crop_luminance   = -1;
       
+			grab_priv->prev_fmt							 = NULL;
+			grab_priv->prev_sparm						 = NULL;
+			
       grab_priv->source_component   = grabber;
       
       if (ambitv_v4l2_grab_configure(grabber, argc, argv) < 0)
