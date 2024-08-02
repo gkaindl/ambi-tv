@@ -42,7 +42,7 @@
 #define DEFAULT_Y_HISTOGRAM_INSET		(.0005f)
 #define DEFAULT_Y_MIN_DYN_RANGE			(35)
 #define DEFAULT_Y_FLAT_SCALE				(.85f)
-#define DEFAULT_UV_BOOST						(.35f)
+#define DEFAULT_UV_BOOST						(.6f)
 
 #define FIXPT												(12)
 
@@ -106,7 +106,10 @@ ambitv_yuv_enhance_init_luts(struct ambitv_yuv_enhance_coloreffect_priv* priv)
 	for (i=0; i<255; i++) {
 		float val = ((float)(i - 128) / 128.0f);
 		priv->lut_uv_scale[i] =
-			(uint32_t)round(pow(1.f-ABS(val), priv->uv_boost) * (float)(1 << FIXPT));	
+			(uint32_t)round(
+				priv->uv_boost * pow(1.f-ABS(val), priv->uv_boost) *
+				(float)(1 << FIXPT)
+			);	
 	}
 	priv->lut_uv_scale[255] = (1 << FIXPT);	
 }
